@@ -1,0 +1,45 @@
+1. До ордерів додати поля:
+    - Дата відправки
+    - Дата доставки
+
+2. 
+
+
+{
+    "id": 1,
+    "order_status_id": 2,
+    "payment_method_id": 1,
+    "delivery_method_id": 1,
+    "group_id": 2,
+    "responsible_user_id": 26,
+    "delivery_price": "41.96",
+    "delivery_fullname": "Lura Satterfield",
+    "delivery_address": "7508 Baumbach Viaduct Suite 328\nNorth Elianbury, CA 63026",
+    "delivery_second_address": null,
+    "delivery_postcode": "32125-6949",
+    "delivery_city": "Karliechester",
+    "delivery_state": null,
+    "delivery_country_code": "CY",
+    "email": "dubuque.mackenzie@mosciski.com",
+    "phone": "+1-681-737-6401",
+    "ip": "211.144.3.149",
+    "comment": "Molestiae suscipit esse fugiat dolores.",
+    "website_referrer": "http://www.shields.org/qui-maiores-ea-sit-autem",
+    "utm_source": null,
+    "utm_medium": null,
+    "utm_term": null,
+    "utm_content": null,
+    "utm_campaign": null,
+    "sub_id1": null,
+    "sub_id2": null,
+    "sub_id3": null,
+    "sub_id4": null,
+    "sub_id5": null,
+    "sub_id6": null,
+    "sub_id7": null,
+    "sub_id8": null,
+    "sub_id9": null,
+    "sub_id10": null,
+    "created_at": "2024-11-11T02:20:03.000000Z",
+    "updated_at": "2024-11-11T02:20:03.000000Z",
+}

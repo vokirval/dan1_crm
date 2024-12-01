@@ -1,0 +1,94 @@
+
+
+@import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --p-datatable-row-selected-background: #f1f5f9!important; /* Ваш цвет */
+    --p-datatable-row-selected-color:#334155!important;
+  }
+  
+.p-card {
+    border:1px solid #e2e8f0!important;
+    box-shadow: none!important;
+    border-radius: 0px!important;
+}
+
+:root {
+    
+    font-family: "Rubik", Tahoma;
+  }
+html {
+    font-size:12px;
+    font-family: "Rubik", Tahoma;
+}
+
+body {
+    background-color:#fff;
+
+}
+.text-muted {
+    color:#64748b;
+}
+
+
+.menu-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: 250px;
+    transition: width 0.3s ease;
+}
+.menu-container.collapsed {
+    width: 55px;
+}
+
+.logo-container {
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.menu-item {
+    padding: 1rem;
+    cursor: pointer;
+}
+.submenu {
+    padding-left: 20px;
+    transition: max-height 0.3s ease;
+}
+.collapse-btn {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.5rem;
+    cursor: pointer;
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.menu-content {
+    flex: 1;
+    min-width: fit-content!important;
+    border-radius:unset!important;
+}
+
+.testerq {
+    width: calc(100% - 250px); /* 250px — ширина сайдбара в развернутом состоянии */
+    transition: width 0.3s ease; /* Плавный переход при изменении ширины */
+}
+
+.menu-container.collapsed + .testerq {
+    width: calc(100% - 55px); /* 50px — ширина свернутого сайдбара */
+}
+
+.submenu-item {
+    padding:5px 0px;
+}
+
+.submenu-item:hover {
+    text-decoration: underline; /* Добавляем подчеркивание при наведении */
+  }
