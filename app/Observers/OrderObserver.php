@@ -78,7 +78,7 @@ class OrderObserver
 
             // Отправка запроса в API
             $response = Http::withToken($apiToken) // Ваш API ключ
-                ->post('https://abandoned-motherboard-59.webhook.cool', $requestData);
+                ->post('https://panel.expansion-fulfillment.com/api/orders/create', $requestData);
 
             // Проверка результата
             if ($response->successful()) {
