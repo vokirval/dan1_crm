@@ -59,6 +59,7 @@ class OrderObserver
                 'external_id' => (string) $order->id, // ID заказа из вашей системы
                 'name' => $order->delivery_fullname ?? 'Unknown',
                 'phone' => $order->phone ?? 'Unknown',
+                'email' => $order->email ?? 'Unknown',
                 'delivery_method' => 'INPOST', // Пример значения
                 'amount' => $amount, // Общая сумма заказа
                 'payment_method' => 'CASH_ON_DELIVERY', // Замените на актуальное
