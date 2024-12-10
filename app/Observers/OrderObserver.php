@@ -25,7 +25,7 @@ class OrderObserver
     protected function panelExpansion(Order $order)
     {
         // Убедимся, что статус заказа подходит
-        $triggerStatuses = [7];
+        $triggerStatuses = [2];
 
         if (!in_array($order->order_status_id, $triggerStatuses)) {
             return;
