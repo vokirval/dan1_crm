@@ -63,7 +63,7 @@ class OrderController extends Controller
         }
 
         // Возвращаем успешный ответ
-        return response()->json(['message' => 'Order created successfully'], 201);
+        return response()->json(['order_id' => $order->id], 201);
     }
 
     public function show()

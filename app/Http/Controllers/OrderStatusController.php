@@ -28,6 +28,7 @@ class OrderStatusController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'color' => 'required|string|max:6'
         ]);
 
         OrderStatus::create($validated);

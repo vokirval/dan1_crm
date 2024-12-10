@@ -33,6 +33,7 @@ import Badge from 'primevue/badge';
 import Avatar from 'primevue/avatar';
 import MultiSelect from 'primevue/multiselect';
 import ToggleButton from 'primevue/togglebutton';
+import ContextMenu from 'primevue/contextmenu';
 
 
 const Noir = definePreset(Aura, {
@@ -124,7 +125,8 @@ export function setupPrimeVue(app) {
     app.component('Inplace', Inplace);
     app.component('ColorPicker', ColorPicker);
     app.component('ToggleButton', ToggleButton);
-
+    app.component('ContextMenu', ContextMenu);
+    
     app.use(ToastService);
     app.use(ConfirmationService);
     app.directive('tooltip', Tooltip);

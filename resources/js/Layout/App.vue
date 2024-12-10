@@ -72,10 +72,6 @@ const menuItems = ref([
     },
 ]);
 
-const toggleCollapse = () => {
-    collapsed.value = !collapsed.value;
-};
-
 const toggleSubMenu = (item) => {
     expandedItem.value = expandedItem.value === item ? null : item;
 };
@@ -131,21 +127,11 @@ const page = usePage();
     </div>
         <div class="flex flex-col w-full testerq">
             <header
-                class="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6"
+                class="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[40px] lg:px-6"
             >
-            <button @click="toggleCollapse" class="text-black">
-            <span>{{ collapsed ? 'Expand' : 'Collapse' }}</span>
-        </button>
+           
                 <div class="w-full flex-1">
-                    <form>
-                        <div class="relative">
-                            <InputText
-                                type="search"
-                                placeholder="Пошук замовлення..."
-                                class="w-full appearance-none bg-background pl-8 shadow-none md:w-2/3 lg:w-1/3"
-                            />
-                        </div>
-                    </form>
+                    Привіт!
                 </div>
                 <!-- Триггер кнопки -->
 

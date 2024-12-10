@@ -63,9 +63,25 @@ const viewOrder = (orderId) => {
 };
 
 
-
+const cm = ref();
 const selectedProduct = ref();
 const metaKey = ref(true);
+const menuModel = ref([
+    {label: 'Перегляд', icon: 'pi pi-fw pi-search', command: () => viewProduct(selectedProduct)},
+    {label: 'Змінити статус', icon: 'pi pi-fw pi-times', command: () => deleteProduct(changeStatus)}
+]);
+
+const onRowContextMenu = (event) => {
+    cm.value.show(event.originalEvent);
+};
+const viewProduct = (product) => {
+    toast.add({severity: 'info', summary: 'Product Selected', detail: product.value.name, life: 3000});
+};
+const changeStatus = (product) => {
+    toast.add({severity: 'info', summary: 'Product Selected', detail: product.value.name, life: 3000});
+};
+
+
 
 onMounted(() => {
   const tableContainer = document.querySelector('.p-datatable-table-container');
@@ -103,11 +119,6 @@ const filterByStatus = (statusId) => {
   loadOrders();
 };
 
-// Вычисляем общее количество заказов
-const totalOrdersCount = computed(() =>
-  statuses.reduce((sum, status) => sum + status.orders_count, 0)
-);
-
 </script>
 
 <template>
@@ -121,16 +132,16 @@ const totalOrdersCount = computed(() =>
   [&::-webkit-scrollbar-thumb]:rounded-full">
   <div
         class="rounded p-2 text-white min-w-[150px] bg-[#020617] cursor-pointer hover:scale-105 hover:shadow-sm"
-        :class="{ 'font-bold': !currentStatusId }"
+        :class="{ 'font-medium': !currentStatusId }"
         @click="filterByStatus(null)"
       >
-        Всі ({{ totalOrdersCount }})
+        Всі ({{ orders.total }})
       </div>
       <div
         v-for="status in statuses"
         :key="status.id"
         class="rounded p-2 text-white min-w-[150px] cursor-pointer hover:scale-105 hover:shadow-sm"
-        :class="{ 'font-bold': currentStatusId === status.id }"
+        :class="{ 'font-medium': currentStatusId === status.id }"
         :style="{ backgroundColor: `#${status.color}` }"
         @click="filterByStatus(status.id)"
       >
@@ -142,7 +153,10 @@ const totalOrdersCount = computed(() =>
       <Link href="/orders/create"  as="Button" class="p-button p-component p-button-contrast"><Plus /> Додати замовлення</Link>
     </div>
 
+    <ContextMenu ref="cm" :model="menuModel" @hide="selectedProduct = null" />
     <DataTable
+    contextMenu v-model:contextMenuSelection="selectedProduct"
+                @rowContextmenu="onRowContextMenu"
       v-model:selection="selectedProduct" 
       :value="orders.data"
       :paginator="true"
@@ -165,11 +179,16 @@ const totalOrdersCount = computed(() =>
       <Column field="id" header="ID" />
       <Column class="w-[40px]" header="Статус">
         <template #body="{ data }">
-            <span
+            <span v-if="data.status"
             class="rounded flex items-center justify-center p-1 text-white text-xs"
             :style="{ backgroundColor: `#${data.status.color}` }"
             >
             {{data.status.name}}
+            </span>
+            <span v-else
+            class="rounded flex items-center justify-center p-1 text-white bg-black text-xs"
+            >
+            Без статусу
             </span>
         </template>
       </Column>
