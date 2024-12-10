@@ -56,7 +56,7 @@ class OrderObserver
             // Формируем данные для API
             $requestData = [
                 'user_id' => 12, // Ваш идентификатор пользователя в API
-                'external_id' => $order->id, // ID заказа из вашей системы
+                'external_id' => (string) $order->id, // ID заказа из вашей системы
                 'name' => $order->delivery_fullname ?? 'Unknown',
                 'phone' => $order->phone ?? 'Unknown',
                 'delivery_method' => 'INPOST', // Пример значения
