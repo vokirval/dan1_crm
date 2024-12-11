@@ -31,7 +31,6 @@ const selectedOrder = ref(null);
  // Открытие диалога
  const openOrderDialog = (event) => {
   selectedOrder.value = event.data; // Передаем модель заказа
-  console.log(selectedOrder.value);
   visible.value = true;
 };
 
@@ -141,7 +140,6 @@ const formatCurrency = (value, locale = 'pl-PL', currency = 'PLN') => {
 
 
 const totalAmount = (selectedOrder) => {
-  console.log(selectedOrder);
   return selectedOrder.reduce((total, item) => {
     return total + item.quantity * item.price;
   }, 0);
@@ -283,19 +281,28 @@ const totalAmount = (selectedOrder) => {
       <div class=" bg-[#eee] rounded py-5 px-2 text-normal border-b ">
         <div class="grid grid-cols-3 gap-4 justify-items-center items-center">
           
-            
-            <p><strong>Статус замовлення:</strong> <span v-if="selectedOrder.status"
+          
+
+            <p><strong class="mr-2">Статус замовлення:</strong>
+            <span v-if="selectedOrder.status"
             class="rounded  p-1 text-white text-xs"
-            :style="{ backgroundColor: `#${selectedOrder.status.color}` }"
-            >{{ selectedOrder.status?.name }}</span></p>
+            :style="{ backgroundColor: `#${selectedOrder.status.color}` }">
+            {{ selectedOrder.status?.name }}
+            </span>
+            <span v-else
+            class="rounded p-1 text-white bg-black text-xs"
+            >
+            Без статусу
+            </span>
+           </p>
             <p><strong>Відповідальний:</strong> {{ selectedOrder.responsible_user?.name }}</p>
             <Button size="small" @click="viewOrder(selectedOrder.id)"><Pencil class="w-5 h-5"/> Редагувати замовлення</Button>
         </div>
       </div>
 
       <!-- Доставка -->
-      <div class="text-base py-5 px-2 bg-[#f1f5f9]">
-        <div class="grid grid-cols-6 gap-4">
+      <div class="text-base p-5 bg-[#f1f5f9]">
+        <div class="grid grid-cols-6 gap-4 ">
           <p><strong>Ім'я:</strong> {{ selectedOrder.delivery_fullname }}</p>
           <p><strong>Phone:</strong> {{ selectedOrder.phone }}</p>
           <p><strong>Місто:</strong> {{ selectedOrder.delivery_city }}</p>
@@ -377,14 +384,14 @@ const totalAmount = (selectedOrder) => {
                 Загальна сума:
               </td>
               <td class="border border-gray-300 p-2 font-bold">
-                {{ totalAmount(selectedOrder.items) }}
+                {{ formatCurrency(totalAmount(selectedOrder.items)) }}
               </td>
             </tr>
           </tfoot>
         </table>
      
       <!-- UTM-метки -->
-      <div class="text-base py-5 px-2 bg-[#f1f5f9]">
+      <div class="text-base p-5 bg-[#f1f5f9]">
         <div class="grid grid-cols-5 gap-4 mt-2">
           <p><strong>UTM Source:</strong> {{ selectedOrder.utm_source || 'N/A' }}</p>
           <p><strong>UTM Medium:</strong> {{ selectedOrder.utm_medium || 'N/A' }}</p>
