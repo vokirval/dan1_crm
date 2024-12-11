@@ -4,7 +4,7 @@ import Layout from '../../Layout/App.vue';
 import { usePage, Head, router, Link } from '@inertiajs/vue3';
 import { DataTable, Column, Button } from 'primevue';
 import { useToast } from 'primevue/usetoast';
-import { Plus } from 'lucide-vue-next';
+import { Plus, Pencil } from 'lucide-vue-next';
 
 const page = usePage();
 const toast = useToast();
@@ -24,6 +24,18 @@ const perPage = ref(orders.value.per_page || 10);
 const currentPage = ref(orders.value.current_page || 1);
 const sortBy = ref('created_at');
 const sortDirection = ref('desc');
+
+const visible = ref(false);
+const selectedOrder = ref(null);
+
+ // Открытие диалога
+ const openOrderDialog = (event) => {
+  selectedOrder.value = event.data; // Передаем модель заказа
+  console.log(selectedOrder.value);
+  visible.value = true;
+};
+
+
 
 const onPageChange = (event) => {
   currentPage.value = event.page + 1;
@@ -63,23 +75,7 @@ const viewOrder = (orderId) => {
 };
 
 
-const cm = ref();
 const selectedProduct = ref();
-const metaKey = ref(true);
-const menuModel = ref([
-    {label: 'Перегляд', icon: 'pi pi-fw pi-search', command: () => viewProduct(selectedProduct)},
-    {label: 'Змінити статус', icon: 'pi pi-fw pi-times', command: () => deleteProduct(changeStatus)}
-]);
-
-const onRowContextMenu = (event) => {
-    cm.value.show(event.originalEvent);
-};
-const viewProduct = (product) => {
-    toast.add({severity: 'info', summary: 'Product Selected', detail: product.value.name, life: 3000});
-};
-const changeStatus = (product) => {
-    toast.add({severity: 'info', summary: 'Product Selected', detail: product.value.name, life: 3000});
-};
 
 
 
@@ -119,10 +115,41 @@ const filterByStatus = (statusId) => {
   loadOrders();
 };
 
+
+// Форматируем название вариации на основе её атрибутов
+function formatVariationName(variation) {
+  if (
+    !variation ||
+    !variation.attributes ||
+    variation.attributes.length === 0
+  ) {
+    return "Без атрибутов";
+  }
+
+  return variation.attributes
+    .map((attr) => `${attr.attribute_name}: ${attr.attribute_value}`)
+    .join(", ");
+}
+
+
+const formatCurrency = (value, locale = 'pl-PL', currency = 'PLN') => {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currency,
+  }).format(value);
+}
+
+
+const totalAmount = (selectedOrder) => {
+  console.log(selectedOrder);
+  return selectedOrder.reduce((total, item) => {
+    return total + item.quantity * item.price;
+  }, 0);
+};
 </script>
 
 <template>
-  <Head title="Заказы" />
+  <Head title="Замовлення" />
   <Layout>
     <div class="w-full flex overflow-x-scroll overflow-y-hidden gap-3 align-start p-3 list-statuses bg-[#eee] rounded
     [&::-webkit-scrollbar]:h-2
@@ -135,7 +162,7 @@ const filterByStatus = (statusId) => {
         :class="{ 'font-medium': !currentStatusId }"
         @click="filterByStatus(null)"
       >
-        Всі ({{ orders.total }})
+        Всі замовлення
       </div>
       <div
         v-for="status in statuses"
@@ -153,10 +180,8 @@ const filterByStatus = (statusId) => {
       <Link href="/orders/create"  as="Button" class="p-button p-component p-button-contrast"><Plus /> Додати замовлення</Link>
     </div>
 
-    <ContextMenu ref="cm" :model="menuModel" @hide="selectedProduct = null" />
     <DataTable
-    contextMenu v-model:contextMenuSelection="selectedProduct"
-                @rowContextmenu="onRowContextMenu"
+  
       v-model:selection="selectedProduct" 
       :value="orders.data"
       :paginator="true"
@@ -170,12 +195,12 @@ const filterByStatus = (statusId) => {
       @page="onPageChange"
       @sort="onSortChange"
       showGridlines
-      selectionMode="multiple"
-      :metaKeySelection="metaKey"
       dataKey="id"
       scrollable 
+      @row-dblclick="openOrderDialog"
     class=""
     >
+    <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
       <Column field="id" header="ID" />
       <Column class="w-[40px]" header="Статус">
         <template #body="{ data }">
@@ -239,14 +264,152 @@ const filterByStatus = (statusId) => {
       
       <Column header="Действия" class="w-[150px]">
         <template #body="{ data }">
-          <Button
-            label="Просмотр"
-            class="p-button-info p-button-sm"
-            @click="viewOrder(data.id)"
-          />
+          <Button size="small" @click="viewOrder(data.id)"><Pencil class="w-5 h-5"/> Редагувати</Button>
         </template>
       </Column>
     </DataTable>
+
+
+
+    <Dialog 
+    v-model:visible="visible" maximizable modal header="Деталі замовлення"
+    :style="{ width: '100rem' }"
+    :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
+  >
+    <div v-if="selectedOrder">
+
+ 
+      <!-- Основная информация -->
+      <div class=" bg-[#eee] rounded py-5 px-2 text-normal border-b ">
+        <div class="grid grid-cols-3 gap-4 justify-items-center items-center">
+          
+            
+            <p><strong>Статус замовлення:</strong> <span v-if="selectedOrder.status"
+            class="rounded  p-1 text-white text-xs"
+            :style="{ backgroundColor: `#${selectedOrder.status.color}` }"
+            >{{ selectedOrder.status?.name }}</span></p>
+            <p><strong>Відповідальний:</strong> {{ selectedOrder.responsible_user?.name }}</p>
+            <Button size="small" @click="viewOrder(selectedOrder.id)"><Pencil class="w-5 h-5"/> Редагувати замовлення</Button>
+        </div>
+      </div>
+
+      <!-- Доставка -->
+      <div class="text-base py-5 px-2 bg-[#f1f5f9]">
+        <div class="grid grid-cols-6 gap-4">
+          <p><strong>Ім'я:</strong> {{ selectedOrder.delivery_fullname }}</p>
+          <p><strong>Phone:</strong> {{ selectedOrder.phone }}</p>
+          <p><strong>Місто:</strong> {{ selectedOrder.delivery_city }}</p>
+          <p><strong>ЗІП код:</strong> {{ selectedOrder.delivery_postcode }}</p>
+          <p><strong>Адреса:</strong> {{ selectedOrder.delivery_address }}</p>
+          <p><strong>Доп. адреса:</strong> {{ selectedOrder.delivery_second_address }}</p>
+          
+          
+          <p><strong>Метод доставки:</strong> {{ selectedOrder.delivery_method?.name }}</p>
+          <p><strong>Метод оплати:</strong> {{ selectedOrder.payment_method?.name }}</p>
+          <p><strong>Email:</strong> {{ selectedOrder.email }}</p>
+          <p><strong>Комент:</strong> {{ selectedOrder.comment || 'N/A' }}</p>
+          
+        </div>
+      </div>
+
+
+
+
+      
+
+
+
+      
+        <table class="table-auto w-full border-collapse border border-gray-300 my-5">
+          <thead>
+            <tr>
+              <th class="border border-gray-300 p-2">Назва</th>
+              <th class="border border-gray-300 p-2">Атрибути</th>
+              <th class="border border-gray-300 p-2">
+                Кількість
+              </th>
+              <th class="border border-gray-300 p-2">Ціна</th>
+              <th class="border border-gray-300 p-2">Сума</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in selectedOrder.items" :key="item.id">
+              <td class="border border-gray-300 p-2">
+                <span v-if="item.product_id">{{
+                  item.product.name
+                }}</span>
+                <span v-else-if="item.product_variation_id">
+                  {{
+                    item.product_variation.product.name
+                  }}</span>
+                <span v-else>Товар не знайдено...</span>
+              </td>
+              <td class="border border-gray-300 p-2">
+                <span v-if="item.product_variation_id">
+                  {{
+                    formatVariationName(
+                      item.product_variation
+                    )
+                  }}
+                </span>
+                <span v-else> - </span>
+              </td>
+              <td class="border border-gray-300 p-2">
+              
+                    {{ item.quantity }}
+      
+              </td>
+              <td class="border border-gray-300 p-2">
+                
+                    {{ item.price }}
+                 
+
+              </td>
+              <td class="border border-gray-300 p-2">
+                {{ formatCurrency(item.quantity * item.price) }}
+              </td>
+              
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" class="border border-gray-300 p-2 font-bold text-right">
+                Загальна сума:
+              </td>
+              <td class="border border-gray-300 p-2 font-bold">
+                {{ totalAmount(selectedOrder.items) }}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+     
+      <!-- UTM-метки -->
+      <div class="text-base py-5 px-2 bg-[#f1f5f9]">
+        <div class="grid grid-cols-5 gap-4 mt-2">
+          <p><strong>UTM Source:</strong> {{ selectedOrder.utm_source || 'N/A' }}</p>
+          <p><strong>UTM Medium:</strong> {{ selectedOrder.utm_medium || 'N/A' }}</p>
+          <p><strong>UTM Term:</strong> {{ selectedOrder.utm_term || 'N/A' }}</p>
+          <p><strong>UTM Content:</strong> {{ selectedOrder.utm_content || 'N/A' }}</p>
+          <p><strong>UTM Campaign:</strong> {{ selectedOrder.utm_campaign || 'N/A' }}</p>
+          <p><strong>IP Address:</strong> {{ selectedOrder.ip }}</p>
+          <p><strong>Website Reffer:</strong> {{ selectedOrder.website_referrer }}</p>
+          
+        </div>
+      </div>
+
+      <!-- Основная информация -->
+      <div class="border-b bg-[#eee] rounded-sm p-2 text-normal">
+        <div class="grid grid-cols-2 gap-4 mt-2 justify-items-center">
+          <p><strong>Замовлення створено:</strong> {{ formatDateTime(selectedOrder.created_at) }}</p>
+          <p><strong>Замовлення оновлено:</strong> {{ formatDateTime(selectedOrder.updated_at) }}</p>
+        </div>
+      </div>
+
+ 
+    </div>
+  </Dialog>
+
+
   </Layout>
 </template>
 

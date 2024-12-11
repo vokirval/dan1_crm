@@ -44,7 +44,16 @@ class OrdersController extends Controller
 
         // Применяем сортировку и пагинацию
         $orders = $ordersQuery
-            ->with(['status', 'paymentMethod', 'deliveryMethod', 'group', 'responsibleUser', 'items.product', 'items.productVariation'])
+            ->with([
+            'status', 
+            'paymentMethod', 
+            'deliveryMethod', 
+            'group', 
+            'responsibleUser', 
+            'items.product:name,id',
+                'items.productVariation:id,product_id',
+                'items.productVariation.product:name,id',
+                'items.productVariation.attributes:product_variation_id,attribute_name,attribute_value'])
             ->orderBy($sortBy, $sortDirection)
             ->paginate($perPage)
             ->appends($request->only(['per_page', 'sort_by', 'sort_direction']));
