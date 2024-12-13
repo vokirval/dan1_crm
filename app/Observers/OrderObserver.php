@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Order;
+use App\Models\OrderFulfillment;
 use Illuminate\Support\Facades\Http;
 
 class OrderObserver
@@ -28,6 +29,14 @@ class OrderObserver
         $triggerStatuses = [2];
 
         if (!in_array($order->order_status_id, $triggerStatuses)) {
+            return;
+        }
+
+        // Проверяем, был ли заказ уже отправлен
+        $alreadySent = OrderFulfillment::where('order_id', $order->id)->where('sent', true)->exists();
+
+        if ($alreadySent) {
+            \Log::info('Order already sent to Panel Expansion', ['order_id' => $order->id]);
             return;
         }
 
@@ -83,17 +92,29 @@ class OrderObserver
 
             // Проверка результата
             if ($response->successful()) {
+                // Сохраняем пометку об отправке
+                OrderFulfillment::create([
+                    'order_id' => $order->id,
+                    'sent' => true,
+                    'comment' => 'Order successfully sent to fulfillment.',
+                ]);
+    
                 \Log::info('Order sent to Panel Expansion', [
                     'order_id' => $order->id,
                     'response' => $response->json(),
                 ]);
             } else {
-                \Log::error('Failed to send order to Panel Expansion', [
-                    'order_id' => $order->id,
-                    'response' => $response->body(),
-                ]);
+                // Меняем статус заказа на 12
+              $order->update(['order_status_id' => 12]);
+
+                throw new \Exception('Failed to send order: ' . $response->body());
             }
         } catch (\Exception $e) {
+
+            // Меняем статус заказа на 12
+           $order->update(['order_status_id' => 12]);
+
+
             \Log::error('Error sending order to Panel Expansion', [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
