@@ -12,7 +12,7 @@ import {
     ChevronRight,
     Settings
 } from "lucide-vue-next";
-import { Link, usePage } from "@inertiajs/vue3";
+import { Link, usePage, router } from "@inertiajs/vue3";
 import { useForm } from "@inertiajs/vue3";
 import { ref, computed  } from "vue";
 
