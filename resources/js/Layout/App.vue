@@ -12,7 +12,7 @@ import {
     ChevronRight,
     Settings
 } from "lucide-vue-next";
-import { Link, usePage, useRouter } from "@inertiajs/vue3";
+import { Link, usePage } from "@inertiajs/vue3";
 import { useForm } from "@inertiajs/vue3";
 import { ref, computed  } from "vue";
 
@@ -91,7 +91,6 @@ const hoverCollapse = () => {
 
 
 const page = usePage();
-const router = useRouter(); // Используем useRouter для управления навигацией
 
 const isChildPage = computed(() => {
   const pathSegments = page.url.split("/").filter(Boolean);
@@ -103,7 +102,7 @@ const goBack = () => {
   if (document.referrer) {
     window.history.back(); // Возвращаемся на предыдущую страницу, если есть referrer
   } else {
-    router.visit("/"); // Если referrer отсутствует, отправляем на главную
+    window.location.href = "/";// Если referrer отсутствует, отправляем на главную
   }
 };
 
