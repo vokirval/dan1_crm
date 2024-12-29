@@ -15,19 +15,23 @@ Route::get('/user', function (Request $request) {
 
 Route::post('/change_status/{status_id}', function (Request $request, $status_id) {
     try {
+		
+		
+		
         // Получаем данные из вебхука
         $webhookData = $request->validate([
             'external_id' => 'required|string', // Айдишник заказа
         ]);
-
+		
         // Ищем заказ по external_id
-        $order = Order::where('external_id', $webhookData['external_id'])->first();
-
+        $order = Order::where('id', $webhookData['external_id'])->first();
+		
         if (!$order) {
-            return response()->json([
-                'message' => 'Order not found.',
-            ], 404);
-        }
+			Log::warning('Order not found for external_id.', ['external_id' => $webhookData['external_id']]);
+			return response()->json([
+				'message' => 'Order not found.',
+			], 404);
+		}
 
         // Обновляем статус заказа
         $order->update([
