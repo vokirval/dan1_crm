@@ -7,6 +7,7 @@ import InputText from 'primevue/inputtext';
 import Dialog from 'primevue/dialog';
 import Tooltip from 'primevue/tooltip';
 import DataTable from 'primevue/datatable';
+import DatePicker from 'primevue/datepicker';
 import Column from 'primevue/column';
 import Paginator from 'primevue/paginator';
 import Card from 'primevue/card';
@@ -126,6 +127,7 @@ export function setupPrimeVue(app) {
     app.component('ColorPicker', ColorPicker);
     app.component('ToggleButton', ToggleButton);
     app.component('ContextMenu', ContextMenu);
+    app.component('DatePicker', DatePicker);
     
     app.use(ToastService);
     app.use(ConfirmationService);

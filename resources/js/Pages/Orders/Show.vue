@@ -11,7 +11,7 @@ const confirm = useConfirm();
 const toast = useToast();
 const { props } = usePage();
 
-
+console.log(props);
 const order = ref(props.order);
 const products = ref(props.products);
 const selectedProduct = ref(null);
@@ -24,6 +24,30 @@ const groups = ref(props.groups);
 const users = ref(props.users);
 
 const page = usePage();
+
+
+// Методы для обработки дат
+const parseDateFromApi = (dateString) => {
+  if (!dateString) return null;
+  return new Date(dateString.replace(" ", "T")); // Преобразуем "Y-m-d H:i:s" в ISO-формат
+};
+
+const formatDateForApi = (date) => {
+  if (!date) return null;
+
+  // Если дата — это строка, преобразуем её в объект Date
+  if (typeof date === "string") {
+    date = new Date(date.replace(" ", "T")); // Преобразуем "Y-m-d H:i:s" в ISO-формат
+  }
+
+  // Проверяем, является ли дата объектом Date
+  if (!(date instanceof Date) || isNaN(date.getTime())) {
+    throw new TypeError("Invalid date provided");
+  }
+
+  const pad = (num) => String(num).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
 
 const form = ref({
   delivery_fullname: order.value.delivery_fullname,
@@ -39,10 +63,20 @@ const form = ref({
   delivery_method_id: order.value.delivery_method_id,
   group_id: order.value.group_id,
   responsible_user_id: order.value.responsible_user_id,
+  delivery_date: order.value.delivery_date,
+  payment_date: order.value.payment_date,
 });
 
 const updateOrder = () => {
-  router.put(`/orders/${order.value.id}`, form.value, {
+
+  const dataToSubmit = {
+    ...form.value,
+    delivery_date: formatDateForApi(form.value.delivery_date),
+    payment_date: formatDateForApi(form.value.payment_date),
+  };
+
+
+  router.put(`/orders/${order.value.id}`, dataToSubmit, {
     onSuccess: () => {
       toast.add({
         severity: "success",
@@ -348,7 +382,31 @@ const formatCurrency = (value, locale = 'pl-PL', currency = 'PLN') => {
           <label for="product_quantity">Відповідальний</label>
         </IftaLabel>
 
-        <h3 class="text-lg font-bold mb-2">Добавить товар:</h3>
+        <IftaLabel class="mt-5">
+          <DatePicker
+            id="delivery_date"
+            dateFormat="yy-mm-dd"
+            v-model="form.delivery_date"
+            showTime
+            hourFormat="24"
+            fluid
+          />
+          <label for="delivery_date">Дата отримання посилки клієнтом</label>
+        </IftaLabel>
+
+        <IftaLabel class="mt-5">
+          <DatePicker
+            id="payment_date"
+            dateFormat="yy-mm-dd"
+            v-model="form.payment_date"
+            showTime
+            hourFormat="24"
+            fluid
+          />
+          <label for="payment_date">Дата онлайн оплати</label>
+        </IftaLabel>
+
+        <h3 class="text-lg font-bold mb-2 mt-3">Добавить товар:</h3>
         <div class="grid grid-cols-2 gap-4 mb-6">
           <IftaLabel>
             <Select v-model="selectedProduct" :options="products" optionLabel="name" placeholder="Выберите товар"

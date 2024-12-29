@@ -43,6 +43,8 @@ class Order extends Model
         'sub_id8',
         'sub_id9',
         'sub_id10',
+        'delivery_date', // Новое поле
+        'payment_date',  // Новое поле
     ];
 
     public function status()

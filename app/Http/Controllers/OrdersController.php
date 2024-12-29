@@ -11,7 +11,7 @@ use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-
+use Carbon\Carbon;
 
 
 class OrdersController extends Controller
@@ -147,6 +147,8 @@ class OrdersController extends Controller
             'items.*.product_variation_id' => 'nullable|exists:product_variations,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
+            'delivery_date' => 'nullable|date_format:Y-m-d H:i',
+            'payment_date' => 'nullable|date_format:Y-m-d H:i',
         ]);
 
         // Устанавливаем IP-адрес пользователя, если он не предоставлен
@@ -256,7 +258,11 @@ class OrdersController extends Controller
             'utm_campaign' => 'nullable|string|max:255',
             'sub_ids' => 'array',
             'sub_ids.*' => 'nullable|string|max:255',
+            'delivery_date' => 'nullable|date',
+            'payment_date' => 'nullable|date',
         ]);
+
+        
 
         $order->update($validated);
 

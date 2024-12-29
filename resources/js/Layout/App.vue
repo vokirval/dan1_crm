@@ -14,7 +14,7 @@ import {
 } from "lucide-vue-next";
 import { Link, usePage } from "@inertiajs/vue3";
 import { useForm } from "@inertiajs/vue3";
-import { ref, watchEffect } from "vue";
+import { ref, computed  } from "vue";
 
 const form = useForm({});
 const isOpen = ref(false);
@@ -92,6 +92,20 @@ const hoverCollapse = () => {
 
 const page = usePage();
 
+const isChildPage = computed(() => {
+  const pathSegments = page.url.split("/").filter(Boolean);
+  return pathSegments.length > 1; // Если сегментов больше 1, это дочерняя страница
+});
+
+// Возвращаем пользователя назад
+const goBack = () => {
+  if (document.referrer) {
+    window.history.back(); // Возвращаемся на предыдущую страницу, если есть referrer
+  } else {
+    router.visit("/"); // Если referrer отсутствует, отправляем на главную
+  }
+};
+
 </script>
 
 <template>
@@ -123,15 +137,17 @@ const page = usePage();
             </template>
 
         </Menu>
-       
-    </div>
+        
+    </div> 
         <div class="flex flex-col w-full testerq">
             <header
                 class="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[40px] lg:px-6"
             >
-           
+                
                 <div class="w-full flex-1">
-                    Привіт!
+                    <!-- Условие для отображения кнопки "Назад" -->
+    
+                    <Button label="Назад" severity="help" v-if="isChildPage" @click="goBack" />
                 </div>
                 <!-- Триггер кнопки -->
 
