@@ -40,6 +40,19 @@ class OrderObserver
             return;
         }
 
+        // Проверка флага оплаты, если метод оплаты не равен 1 (COD)
+        if ($order->payment_method_id != 1 && !$order->is_paid) {
+            // Если заказ не оплачен, переводим в статус 12 и логируем
+            $order->update(['order_status_id' => 12]);
+            OrderFulfillment::create([
+                'order_id' => $order->id,
+                'sent' => false,
+                'comment' => 'Order not sent: payment not completed for non-COD method.',
+            ]);
+            \Log::warning('Order not sent to Panel Expansion: payment not completed for non-COD method.', ['order_id' => $order->id]);
+            return;
+        }
+
         // Жадная загрузка товаров с минимальными полями
         $order->load(['items.product:id,id,sku', 'items.productVariation:id,id,sku']);
 
@@ -70,6 +83,11 @@ class OrderObserver
         if (count($nameParts) < 2) {
             // Если фамилия отсутствует, переводим заказ в статус 12
             $order->update(['order_status_id' => 12]);
+            OrderFulfillment::create([
+                'order_id' => $order->id,
+                'sent' => false,
+                'comment' => 'Missing surname in delivery_fullname.',
+            ]);
             \Log::warning('Order not sent: missing surname', ['order_id' => $order->id]);
             return;
         }
@@ -122,6 +140,11 @@ class OrderObserver
             } else {
                 // Меняем статус заказа на 12
               $order->update(['order_status_id' => 12]);
+                OrderFulfillment::create([
+                    'order_id' => $order->id,
+                    'sent' => false,
+                    'comment' => 'Failed to send order: ' . $response->body(),
+                ]);
 
                 throw new \Exception('Failed to send order: ' . $response->body());
             }
@@ -129,6 +152,11 @@ class OrderObserver
 
             // Меняем статус заказа на 12
            $order->update(['order_status_id' => 12]);
+           OrderFulfillment::create([
+                'order_id' => $order->id,
+                'sent' => false,
+                'comment' => 'Error sending order: ' . $e->getMessage(),
+            ]);
 
 
             \Log::error('Error sending order to Panel Expansion', [

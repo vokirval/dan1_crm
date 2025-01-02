@@ -45,6 +45,9 @@ class Order extends Model
         'sub_id10',
         'delivery_date', // Новое поле
         'payment_date',  // Новое поле
+        'tracking_number', // Добавлено
+        'is_paid',         // Добавлено
+        'paid_amount',     // Добавлено
     ];
 
     public function status()

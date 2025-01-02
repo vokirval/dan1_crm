@@ -238,8 +238,10 @@ const totalAmount = (selectedOrder) => {
       <Column field="delivery_address" header="Адреса" />
       <Column field="delivery_postcode" header="Зіп код" />
       
-      <Column field="payment_method.name" header="Оплата" />
+      <Column field="payment_method.name" header="Метод оплати" />
+      <Column field="is_paid" header="Оплата" />
       <Column field="delivery_method.name" header="Доставка" />
+      <Column field="tracking_number" header="Трекинг" />
 
       <Column field="group.name" header="Група" alignFrozen="right" :frozen="frozens.group">
       <template #header>

@@ -149,6 +149,9 @@ class OrdersController extends Controller
             'items.*.price' => 'required|numeric|min:0',
             'delivery_date' => 'nullable|date_format:Y-m-d H:i',
             'payment_date' => 'nullable|date_format:Y-m-d H:i',
+            'tracking_number' => 'nullable|string|max:255', // Новое поле
+            'is_paid' => 'nullable|boolean', // Новое поле
+            'paid_amount' => 'nullable|numeric|min:0', // Новое поле
         ]);
 
         // Устанавливаем IP-адрес пользователя, если он не предоставлен
@@ -279,6 +282,9 @@ class OrdersController extends Controller
             'sub_ids.*' => 'nullable|string|max:255',
             'delivery_date' => 'nullable|date',
             'payment_date' => 'nullable|date',
+            'tracking_number' => 'nullable|string|max:255', // Новое поле
+            'is_paid' => 'nullable|boolean', // Новое поле
+            'paid_amount' => 'nullable|numeric|min:0', // Новое поле
         ]);
 
         

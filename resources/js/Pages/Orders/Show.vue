@@ -68,6 +68,9 @@ const form = ref({
   responsible_user_id: order.value.responsible_user_id,
   delivery_date: order.value.delivery_date,
   payment_date: order.value.payment_date,
+  tracking_number: order.value.tracking_number,
+  is_paid: order.value.is_paid,
+  paid_amount: order.value.paid_amount,
 });
 
 const updateOrder = () => {
@@ -431,6 +434,18 @@ const formatDateTime = (date) => {
         </IftaLabel>
 
         <IftaLabel class="mt-5">
+          <Select  placeholder="Група"  optionLabel="label" optionValue="value" class="w-full" v-model="form.is_paid" 
+          :options="[
+            { label: 'Ні', value: 0 },
+            { label: 'Так', value: 1 }
+          ]"  />
+          
+
+      
+          <label for="is_paid">Оплачено</label>
+        </IftaLabel>
+
+        <IftaLabel class="mt-5">
           <DatePicker
             id="payment_date"
             dateFormat="yy-mm-dd"
@@ -441,6 +456,16 @@ const formatDateTime = (date) => {
           />
           <label for="payment_date">Дата онлайн оплати</label>
         </IftaLabel>
+
+        <div class="mb-4 mt-5">
+          <label for="paid_amount">Сума оплати</label>
+          <InputText id="paid_amount" v-model="form.paid_amount" class="w-full" />
+        </div>
+
+        <div class="mb-4">
+          <label for="tracking_number">Трекинг номер</label>
+          <InputText id="tracking_number" v-model="form.tracking_number" class="w-full" />
+        </div>
 
         <h3 class="text-lg font-bold mb-2 mt-3">Додати товар:</h3>
         <div class="grid grid-cols-2 gap-4 mb-6">
