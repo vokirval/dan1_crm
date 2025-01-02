@@ -194,7 +194,7 @@ class OrdersController extends Controller
             if ($userGroupIds->isEmpty()) {
                 abort(404, 'Order not found for the user group.');
             }
-        
+
             $order = Order::whereIn('group_id', $userGroupIds)
                 ->with([
                     'items.product:name,id',
@@ -205,13 +205,31 @@ class OrdersController extends Controller
                 ->findOrFail($id);
         }
 
+        // Проверка на совпадения по номеру телефона, email и IP
+        $duplicateOrders = Order::where(function ($query) use ($order) {
+            $query->where('phone', $order->phone)
+                ->orWhere('email', $order->email)
+                ->orWhere('ip', $order->ip);
+        })
+        ->where('id', '<>', $order->id) // Исключаем текущий заказ
+        ->with([
+            'status', 
+            'paymentMethod', 
+            'deliveryMethod', 
+            'group', 
+            'responsibleUser', 
+            'items.product:name,id',
+                'items.productVariation:id,product_id',
+                'items.productVariation.product:name,id',
+                'items.productVariation.attributes:product_variation_id,attribute_name,attribute_value'])
+        ->get();
+
         $statuses = OrderStatus::all();
         $payment_methods = PaymentMethod::all();
         $delivery_methods = DeliveryMethod::all();
         $groups = Group::all();
         $users = User::all();
         $products = Product::with('variations.attributes')->get();
-
 
         return Inertia::render('Orders/Show', [
             'order' => $order,
@@ -221,6 +239,7 @@ class OrdersController extends Controller
             'groups' => $groups,
             'users' => $users,
             'products' => $products,
+            'duplicateOrders' => $duplicateOrders, // Добавляем массив дублей заказов
         ]);
     }
 

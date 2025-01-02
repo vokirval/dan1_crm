@@ -36,6 +36,9 @@ import MultiSelect from 'primevue/multiselect';
 import ToggleButton from 'primevue/togglebutton';
 import ContextMenu from 'primevue/contextmenu';
 
+import Checkbox from 'primevue/checkbox';
+
+
 
 const Noir = definePreset(Aura, {
     semantic: {
@@ -128,6 +131,7 @@ export function setupPrimeVue(app) {
     app.component('ToggleButton', ToggleButton);
     app.component('ContextMenu', ContextMenu);
     app.component('DatePicker', DatePicker);
+    app.component('Checkbox', Checkbox);
     
     app.use(ToastService);
     app.use(ConfirmationService);

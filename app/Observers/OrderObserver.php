@@ -61,28 +61,44 @@ class OrderObserver
 
             // Преобразование в массив для API
             $productsArray = $products->toArray();
+            
+            // Определяем метод оплаты
+        $paymentMethod = $order->payment_method_id == 1 ? 'CASH_ON_DELIVERY' : 'PREPAY';
 
-            // Формируем данные для API
-            $requestData = [
-                'user_id' => 12, // Ваш идентификатор пользователя в API
-                'external_id' => (string) $order->id, // ID заказа из вашей системы
-                'name' => $order->delivery_fullname ?? 'Unknown',
-                'phone' => $order->phone ?? 'Unknown',
-                'email' => $order->email ?? 'Unknown',
-                'delivery_method' => 'INPOST', // Пример значения
-                'amount' => $amount, // Общая сумма заказа
-                'payment_method' => 'CASH_ON_DELIVERY', // Замените на актуальное
-                'shipment_payer' => 'RECEIVER',
-                'shipment_type' => 'ADDRESS',
-                'country' => 'Poland',
-                'city' => $order->delivery_city ?? 'Unknown',
-                'address' => $order->delivery_address ?? 'Unknown',
-                'second_address' => $order->delivery_second_address ?? '',
-                'products' => $products,
-                'comment' => $order->comment ?? '',
-                'postal_office' => $order->delivery_postcode ?? 'Unknown',
-                'currency' => 'PLN'
-            ];
+        // Проверяем и разбиваем имя и фамилию
+        $nameParts = explode(' ', trim($order->delivery_fullname));
+        if (count($nameParts) < 2) {
+            // Если фамилия отсутствует, переводим заказ в статус 12
+            $order->update(['order_status_id' => 12]);
+            \Log::warning('Order not sent: missing surname', ['order_id' => $order->id]);
+            return;
+        }
+
+        $name = $nameParts[0]; // Имя
+        $surname = implode(' ', array_slice($nameParts, 1)); // Остальные части как фамилия
+
+        // Формируем данные для API
+        $requestData = [
+            'user_id' => 12, // Ваш идентификатор пользователя в API
+            'external_id' => (string) $order->id, // ID заказа из вашей системы
+            'name' => $name,
+            'surname' => $surname,
+            'phone' => $order->phone ?? 'Unknown',
+            'email' => $order->email ?? 'Unknown',
+            'delivery_method' => 'INPOST', // Пример значения
+            'amount' => $amount, // Общая сумма заказа
+            'payment_method' => $paymentMethod,
+            'shipment_payer' => 'RECEIVER',
+            'shipment_type' => 'ADDRESS',
+            'country' => 'Poland',
+            'city' => $order->delivery_city ?? 'Unknown',
+            'address' => $order->delivery_address ?? 'Unknown',
+            'second_address' => $order->delivery_second_address ?? '',
+            'products' => $productsArray,
+            'comment' => $order->comment ?? '',
+            'postal_office' => $order->delivery_postcode ?? 'Unknown',
+            'currency' => 'PLN'
+        ];
 
             $apiToken = env('PANEL_EXPANSION_API_TOKEN');
 

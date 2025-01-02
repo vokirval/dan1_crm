@@ -27,7 +27,7 @@ const logout = () => {
     form.post("/logout");
 };
 
-const collapsed = ref(true);
+const collapsed = ref(false);
 const expandedItem = ref(null);
 const hoverExpanded = ref(false); // Новая переменная для отслеживания состояния при наведении
 
@@ -82,6 +82,7 @@ const getIcon = (iconName) => icons[iconName] || null;
 
 const hoverExpand = () => {
     collapsed.value = !collapsed.value;
+    expandedItem.value = null;
 };
 
 const hoverCollapse = () => {
@@ -110,20 +111,19 @@ const goBack = () => {
 
 <template>
     <div class="flex min-h-screen w-full">
-        <div class="menu-container " :class="{ collapsed }" @mouseenter="hoverExpand" 
-        @mouseleave="hoverCollapse">
+        <div class="menu-container " :class="{ collapsed: !collapsed }" >
         <Menu :model="menuItems" class="menu-content h-full">
             <template #start>
                 <div class="logo-container">
-                    #
-                    <span v-if="!collapsed" class="text-xl font-semibold">DAGGI SHOP</span>
+                    <Checkbox v-model="collapsed" binary  />
+                    <span v-if="collapsed" class="text-xl font-semibold">DAGGI SHOP</span>
                 </div>
             </template>
             <template #item="{ item, props }">
                 <div>
                     <a v-bind="props" class="menu-item flex items-center" @click="toggleSubMenu(item)">
                         <component :is="getIcon(item.icon)" class="menu-icon w-5 h-5 mr-2" />
-                        <span v-if="!collapsed">{{ item.label }}</span>
+                        <span v-if="collapsed">{{ item.label }}</span>
                     </a>
                     <ul v-if="item.children && expandedItem === item" class="submenu">
                         

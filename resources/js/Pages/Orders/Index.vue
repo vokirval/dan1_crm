@@ -15,6 +15,7 @@ const frozens = ref({
 });
 
 const { props: inertiaProps } = usePage();
+console.log(inertiaProps);
 const orders = ref(inertiaProps.data || []);
 const statuses = inertiaProps.statuses || [];
 const currentStatusId = ref(inertiaProps.currentStatusId || null);
@@ -76,28 +77,6 @@ const viewOrder = (orderId) => {
 
 const selectedProduct = ref();
 
-
-
-onMounted(() => {
-  const tableContainer = document.querySelector('.p-datatable-table-container');
-  const listStatuses = document.querySelector('.list-statuses'); 
-  if (tableContainer) {
-    tableContainer.addEventListener('wheel', (e) => {
-      if (e.deltaY !== 0) {
-        e.preventDefault();
-        tableContainer.scrollLeft += e.deltaY;
-      }
-    });
-  }
-  if (listStatuses) {
-    listStatuses.addEventListener('wheel', (e) => {
-      if (e.deltaY !== 0) {
-        e.preventDefault();
-        listStatuses.scrollLeft += e.deltaY;
-      }
-    });
-  }
-});
 const formatDateTime = (date) => {
   const options = { 
     day: '2-digit', 
@@ -149,6 +128,7 @@ const totalAmount = (selectedOrder) => {
 <template>
   <Head title="Замовлення" />
   <Layout>
+    
     <div class="w-full flex overflow-x-scroll overflow-y-hidden gap-3 align-start p-3 list-statuses bg-[#eee] rounded
     [&::-webkit-scrollbar]:h-2
   [&::-webkit-scrollbar-track]:bg-gray-100
@@ -219,6 +199,38 @@ const totalAmount = (selectedOrder) => {
       <Column field="delivery_fullname" header="Контакт" />
       <Column field="phone" header="Телефон" />
       <Column field="comment" header="Коментар" />
+      <Column  header="Товари">
+        <template #body="{ data }">
+          <div v-for="item in data.items" :key="item.id">
+              <div class=" text-xs">
+                <span v-if="item.product_id">{{
+                  item.product.name
+                }}</span>
+                <span v-else-if="item.product_variation_id">
+                  {{
+                    item.product_variation.product.name
+                  }}</span>
+                <span v-else>Товар не знайдено...</span>
+                  
+                <span v-if="item.product_variation_id">
+                  | {{
+                    formatVariationName(
+                      item.product_variation
+                    )
+                  }}
+                </span>
+               
+                 |  x{{ item.quantity }}
+      
+              
+                
+                 | {{ item.price }}
+                 
+
+              </div>
+            </div>
+        </template>
+      </Column>
 
       <Column field="responsible_user.name" header="Відповідальний"/>
 

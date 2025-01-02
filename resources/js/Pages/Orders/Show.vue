@@ -4,18 +4,21 @@ import { usePage, Head, router } from "@inertiajs/vue3";
 import Layout from "../../Layout/App.vue";
 import { Button, InputText, Textarea } from "primevue";
 import { useToast } from "primevue/usetoast";
-import { Trash, Check } from "lucide-vue-next";
+import { Trash, Check, Pencil } from "lucide-vue-next";
 import { useConfirm } from "primevue/useconfirm";
 
 const confirm = useConfirm();
 const toast = useToast();
 const { props } = usePage();
 
+
 console.log(props);
+const duplicateOrders = ref(props.duplicateOrders);
 const order = ref(props.order);
 const products = ref(props.products);
 const selectedProduct = ref(null);
 const selectedVariation = ref(null);
+const dialogVisible = ref(false);
 
 const statuses = ref(props.statuses);
 const payment_methods = ref(props.payment_methods);
@@ -304,12 +307,45 @@ const formatCurrency = (value, locale = 'pl-PL', currency = 'PLN') => {
     currency: currency,
   }).format(value);
 };
+
+const totalAmount = (selectedOrder) => {
+  return selectedOrder.reduce((total, item) => {
+    return total + item.quantity * item.price;
+  }, 0);
+};
+
+const selectedOrder = ref(null);
+const visible = ref(false);
+ // Открытие диалога
+ const openOrderDialog = (event) => {
+  console.log(event);
+  selectedOrder.value = event; // Передаем модель заказа
+  visible.value = true;
+};
+
+const formatDateTime = (date) => {
+  const options = { 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  };
+  return new Date(date).toLocaleString('ru-RU', options);
+};
+
+
 </script>
 
 <template>
 
   <Head title="Просмотр заказа" />
   <Layout>
+    <div class="bg-[#0f172a] mb-3">
+        <div class="bg-surface-900 text-gray-100 py-4 flex justify-center items-center flex-wrap">
+            <div class="font-bold inline-flex gap-1 items-center">🔥 Увага! Є дублікати! 🔥 <Button label="Показати" severity="secondary" @click="dialogVisible = true" /></div>
+        </div>
+    </div>
     <div class="grid grid-cols-2 gap-4">
       <div>
         <h3 class="font-bold text-lg mb-3">Информация о заказе</h3>
@@ -406,7 +442,7 @@ const formatCurrency = (value, locale = 'pl-PL', currency = 'PLN') => {
           <label for="payment_date">Дата онлайн оплати</label>
         </IftaLabel>
 
-        <h3 class="text-lg font-bold mb-2 mt-3">Добавить товар:</h3>
+        <h3 class="text-lg font-bold mb-2 mt-3">Додати товар:</h3>
         <div class="grid grid-cols-2 gap-4 mb-6">
           <IftaLabel>
             <Select v-model="selectedProduct" :options="products" optionLabel="name" placeholder="Выберите товар"
@@ -420,7 +456,7 @@ const formatCurrency = (value, locale = 'pl-PL', currency = 'PLN') => {
             <label>Вариация</label>
           </IftaLabel>
         </div>
-        <Button label="Добавить товар" class="mb-4" @click="addProductToOrder" />
+        <Button label="Додати товар" class="mb-4" @click="addProductToOrder" />
 
         <h3 class="font-bold text-lg mb-3 mt-5">Товари в замовленні</h3>
         <table class="table-auto w-full border-collapse border border-gray-300">
@@ -510,8 +546,185 @@ const formatCurrency = (value, locale = 'pl-PL', currency = 'PLN') => {
               </td>
             </tr>
           </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" class="border border-gray-300 p-2 font-bold text-right">
+                Загальна сума:
+              </td>
+              <td class="border border-gray-300 p-2 font-bold">
+                {{ formatCurrency(totalAmount(order.items)) }}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
+    
+
+       <Dialog v-model:visible="dialogVisible" header="Дублікати замовлення" :style="{ width: '75vw' }" maximizable modal :contentStyle="{ height: '300px' }">
+              <ul>
+              <li v-for="duplicate in duplicateOrders" :key="duplicate.id" class="flex items-center gap-3">
+                Замовлення #{{ duplicate.id }} | Клієнт: {{ duplicate.delivery_fullname }} | Телефон: {{ duplicate.phone }} | Email: {{ duplicate.email }} | IP: {{ duplicate.ip }} <Button size="small" @click="openOrderDialog(duplicate)"><Pencil class="w-5 h-5"/> Детально</Button>
+              </li>
+            </ul>
+            <template #footer>
+                <Button label="Закрити" icon="pi pi-check" @click="dialogVisible = false" />
+            </template>
+        </Dialog>
+
+
+        <Dialog 
+    v-model:visible="visible" maximizable modal header="Деталі замовлення"
+    :style="{ width: '100rem' }"
+    :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
+  >
+    <div v-if="selectedOrder">
+
+ 
+      <!-- Основная информация -->
+      <div class=" bg-[#eee] rounded py-5 px-2 text-normal border-b ">
+        <div class="grid grid-cols-3 gap-4 justify-items-center items-center">
+          
+          
+
+            <p><strong class="mr-2">Статус замовлення:</strong>
+            <span v-if="selectedOrder.status"
+            class="rounded  p-1 text-white text-xs"
+            :style="{ backgroundColor: `#${selectedOrder.status.color}` }">
+            {{ selectedOrder.status?.name }}
+            </span>
+            <span v-else
+            class="rounded p-1 text-white bg-black text-xs"
+            >
+            Без статусу
+            </span>
+           </p>
+            <p><strong>Відповідальний:</strong> {{ selectedOrder.responsible_user?.name }}</p>
+            <Button size="small" @click="viewOrder(selectedOrder.id)"><Pencil class="w-5 h-5"/> Редагувати замовлення</Button>
+        </div>
+      </div>
+
+      <!-- Доставка -->
+      <div class="text-base p-5 bg-[#f1f5f9]">
+        <div class="grid grid-cols-6 gap-4 ">
+          <p><strong>Ім'я:</strong> {{ selectedOrder.delivery_fullname }}</p>
+          <p><strong>Phone:</strong> {{ selectedOrder.phone }}</p>
+          <p><strong>Місто:</strong> {{ selectedOrder.delivery_city }}</p>
+          <p><strong>ЗІП код:</strong> {{ selectedOrder.delivery_postcode }}</p>
+          <p><strong>Адреса:</strong> {{ selectedOrder.delivery_address }}</p>
+          <p><strong>Доп. адреса:</strong> {{ selectedOrder.delivery_second_address }}</p>
+          
+          
+          <p><strong>Метод доставки:</strong> {{ selectedOrder.delivery_method?.name }}</p>
+          <p><strong>Метод оплати:</strong> {{ selectedOrder.payment_method?.name }}</p>
+          <p><strong>Email:</strong> {{ selectedOrder.email }}</p>
+          <p><strong>Комент:</strong> {{ selectedOrder.comment || 'N/A' }}</p>
+          
+        </div>
+      </div>
+
+
+
+
+      
+
+
+
+      
+        <table class="table-auto w-full border-collapse border border-gray-300 my-5">
+          <thead>
+            <tr>
+              <th class="border border-gray-300 p-2">Назва</th>
+              <th class="border border-gray-300 p-2">Атрибути</th>
+              <th class="border border-gray-300 p-2">
+                Кількість
+              </th>
+              <th class="border border-gray-300 p-2">Ціна</th>
+              <th class="border border-gray-300 p-2">Сума</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in selectedOrder.items" :key="item.id">
+              <td class="border border-gray-300 p-2">
+                <span v-if="item.product_id">{{
+                  item.product.name
+                }}</span>
+                <span v-else-if="item.product_variation_id">
+                  {{
+                    item.product_variation.product.name
+                  }}</span>
+                <span v-else>Товар не знайдено...</span>
+              </td>
+              <td class="border border-gray-300 p-2">
+                <span v-if="item.product_variation_id">
+                  {{
+                    formatVariationName(
+                      item.product_variation
+                    )
+                  }}
+                </span>
+                <span v-else> - </span>
+              </td>
+              <td class="border border-gray-300 p-2">
+              
+                    {{ item.quantity }}
+      
+              </td>
+              <td class="border border-gray-300 p-2">
+                
+                    {{ item.price }}
+                 
+
+              </td>
+              <td class="border border-gray-300 p-2">
+                {{ formatCurrency(item.quantity * item.price) }}
+              </td>
+              
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" class="border border-gray-300 p-2 font-bold text-right">
+                Загальна сума:
+              </td>
+              <td class="border border-gray-300 p-2 font-bold">
+                {{ formatCurrency(totalAmount(selectedOrder.items)) }}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <!-- UTM-метки -->
+      <div class="text-base p-5 bg-[#f1f5f9]">
+        <div class="grid grid-cols-5 gap-4 mt-2">
+          <p><strong>UTM Source:</strong> {{ selectedOrder.utm_source || 'N/A' }}</p>
+          <p><strong>UTM Medium:</strong> {{ selectedOrder.utm_medium || 'N/A' }}</p>
+          <p><strong>UTM Term:</strong> {{ selectedOrder.utm_term || 'N/A' }}</p>
+          <p><strong>UTM Content:</strong> {{ selectedOrder.utm_content || 'N/A' }}</p>
+          <p><strong>UTM Campaign:</strong> {{ selectedOrder.utm_campaign || 'N/A' }}</p>
+          <p><strong>IP Address:</strong> {{ selectedOrder.ip }}</p>
+          <p><strong>Website Reffer:</strong> {{ selectedOrder.website_referrer }}</p>
+          
+        </div>
+      </div>
+
+      <!-- Основная информация -->
+      <div class="border-b bg-[#eee] rounded-sm p-2 text-normal">
+        <div class="grid grid-cols-2 gap-4 mt-2 justify-items-center">
+          <p><strong>Замовлення створено:</strong> {{ formatDateTime(selectedOrder.created_at) }}</p>
+          <p><strong>Замовлення оновлено:</strong> {{ formatDateTime(selectedOrder.updated_at) }}</p>
+        </div>
+      </div>
+     
+
+   
+
+ 
+    </div>
+  </Dialog>
+
+
+
+
   </Layout>
 </template>
