@@ -38,7 +38,7 @@ class OrderObserver
         if ($alreadySent) {
             \Log::info('Order already sent to Panel Expansion', ['order_id' => $order->id]);
             return;
-        }
+        } 
 
         // Проверка флага оплаты, если метод оплаты не равен 1 (COD)
         if ($order->payment_method_id != 1 && !$order->is_paid) {
