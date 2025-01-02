@@ -40,7 +40,7 @@ class OrderObserver
             return;
         } 
 
-        // Проверка флага оплаты, если метод оплаты не равен 1 (COD)
+        // Проверка флага оплаты, если метод оплаты не равен 1 (COD ) 
         if ($order->payment_method_id != 1 && !$order->is_paid) {
             // Если заказ не оплачен, переводим в статус 12 и логируем
             $order->update(['order_status_id' => 12]);

@@ -15,10 +15,8 @@ Route::get('/user', function (Request $request) {
 
 Route::post('/change_status/{status_id}', function (Request $request, $status_id) {
     try {
-		
-		
-		
-        // Получаем данные из вебхука
+	
+        // Получаем данные из вебхукаs
         $webhookData = $request->validate([
             'external_id' => 'required|string', // Айдишник заказа
         ]);
