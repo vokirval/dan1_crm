@@ -115,12 +115,12 @@ const goBack = () => {
         <Menu :model="menuItems" class="menu-content h-full">
             <template #start>
                 <div class="logo-container">
-                    <Checkbox v-model="collapsed" binary  />
+                    <Checkbox v-model="collapsed" size="large" binary  />
                     <span v-if="collapsed" class="text-xl font-semibold">DAGGI SHOP</span>
                 </div>
             </template>
             <template #item="{ item, props }">
-                <div>
+                <div v-if="collapsed">
                     <a v-bind="props" class="menu-item flex items-center" @click="toggleSubMenu(item)">
                         <component :is="getIcon(item.icon)" class="menu-icon w-5 h-5 mr-2" />
                         <span v-if="collapsed">{{ item.label }}</span>

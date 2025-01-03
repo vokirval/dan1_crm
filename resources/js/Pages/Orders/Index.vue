@@ -239,7 +239,19 @@ const totalAmount = (selectedOrder) => {
       <Column field="delivery_postcode" header="Зіп код" />
       
       <Column field="payment_method.name" header="Метод оплати" />
-      <Column field="is_paid" header="Оплата" />
+      <Column class="w-[40px]" header="Оплата">
+        <template #body="{ data }">
+            <span v-if="data.is_paid"
+            class="rounded flex items-center justify-center p-1 text-white text-xs bg-black" >
+            Оплачено
+            </span>
+            <span v-else
+            class="rounded flex items-center justify-center p-1 text-white bg-black text-xs"
+            >
+             Не оплачено
+            </span>
+        </template>
+      </Column>
       <Column field="delivery_method.name" header="Доставка" />
       <Column field="tracking_number" header="Трекинг" />
 
