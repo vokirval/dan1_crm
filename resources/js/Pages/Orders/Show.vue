@@ -344,7 +344,7 @@ const formatDateTime = (date) => {
 
   <Head title="Просмотр заказа" />
   <Layout>
-    <div class="bg-[#0f172a] mb-3">
+    <div class="bg-[#0f172a] mb-3" v-if="duplicateOrders[0]">
         <div class="bg-surface-900 text-gray-100 py-4 flex justify-center items-center flex-wrap">
             <div class="font-bold inline-flex gap-1 items-center">🔥 Увага! Є дублікати! 🔥 <Button label="Показати" severity="secondary" @click="dialogVisible = true" /></div>
         </div>
