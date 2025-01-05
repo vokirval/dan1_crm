@@ -79,4 +79,57 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    public function getMacros(): array
+{
+    // Генерируем HTML-таблицу с товарами
+    $productTable = $this->generateProductTable();
+
+    return [
+        '{order_id}' => $this->id,
+        '{customer_name}' => $this->delivery_fullname,
+        '{customer_email}' => $this->email,
+        '{customer_phone}' => $this->phone,
+        '{order_total}' => $this->items->sum(fn($item) => $item->quantity * $item->price), // Общая сумма заказа
+        '{order_date}' => $this->created_at->format('d.m.Y'),
+        '{delivery_address}' => $this->delivery_address,
+        '{delivery_city}' => $this->delivery_city,
+        '{delivery_postcode}' => $this->delivery_postcode,
+        '{product_table}' => $productTable, // Вставляем таблицу с товарами
+    ];
+}
+
+/**
+ * Генерация HTML-таблицы с товарами.
+ */
+private function generateProductTable(): string
+{
+    $tableHeader = '<table border="1" cellspacing="0" cellpadding="5" style="border-collapse: collapse; width: 100%;">';
+    $tableHeader .= '<tr>';
+    $tableHeader .= '<th>Название</th>';
+    $tableHeader .= '<th>Количество</th>';
+    $tableHeader .= '<th>Цена</th>';
+    $tableHeader .= '<th>Сумма</th>';
+    $tableHeader .= '</tr>';
+
+    $tableRows = $this->items->map(function ($item) {
+        return sprintf(
+            '<tr>
+                <td>%s</td>
+                <td>%d</td>
+                <td>%0.2f</td>
+                <td>%0.2f</td>
+            </tr>',
+            e($item->product->name ?? 'Не найдено'), // Название товара
+            $item->quantity,
+            $item->price,
+            $item->quantity * $item->price
+        );
+    })->join('');
+
+    $tableFooter = '</table>';
+
+    return $tableHeader . $tableRows . $tableFooter;
+}
+
 }

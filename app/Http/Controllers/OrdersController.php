@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DeliveryMethod;
+use Carbon\Carbon;
+use App\Models\User;
+use Inertia\Inertia;
 use App\Models\Group;
 use App\Models\Order;
-use App\Models\OrderStatus;
-use App\Models\PaymentMethod;
 use App\Models\Product;
-use App\Models\User;
+use App\Models\OrderStatus;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Carbon\Carbon;
+use App\Models\EmailTemplate;
+use App\Models\PaymentMethod;
+use App\Models\DeliveryMethod;
 
 
 class OrdersController extends Controller
@@ -233,6 +234,7 @@ class OrdersController extends Controller
         $groups = Group::all();
         $users = User::all();
         $products = Product::with('variations.attributes')->get();
+        $emailTemplates = EmailTemplate::all(['id', 'name', 'subject', 'body']);
 
         return Inertia::render('Orders/Show', [
             'order' => $order,
@@ -243,6 +245,7 @@ class OrdersController extends Controller
             'users' => $users,
             'products' => $products,
             'duplicateOrders' => $duplicateOrders, // Добавляем массив дублей заказов
+            'emailTemplates' => $emailTemplates, // Передаем шаблоны
         ]);
     }
 

@@ -14,6 +14,8 @@ use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\DeliveryMethodController;
 use App\Http\Controllers\ProductsCategoryController;
+use App\Http\Controllers\EmailTemplateController;
+use App\Http\Controllers\EmailController;
 
 //php artisan migrate
 //php artisan db:seed --class=DatabaseSeeder
@@ -145,6 +147,10 @@ Route::middleware(['auth'])->group(function() {
     Route::post('/permissions', [PermissionController::class, 'store'])->name('permissions.store')->middleware('permission:Створення дозволів');
     Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy'])->name('permissions.destroy')->middleware('permission:Видалення дозволів');
 
+  
+
+    Route::resource('email-templates', EmailTemplateController::class);
+    Route::post('/orders/{order}/send-email', [EmailController::class, 'sendEmail'])->name('orders.send-email');
 
 
 

@@ -19,6 +19,60 @@ const products = ref(props.products);
 const selectedProduct = ref(null);
 const selectedVariation = ref(null);
 const dialogVisible = ref(false);
+const emailTemplates = ref(props.emailTemplates || []); // Список шаблонов email
+const selectedTemplateId = ref(null); // Выбранный шаблон
+const customSubject = ref(""); // Пользовательская тема
+const customBody = ref(""); // Пользовательское тело письма
+const emailDialogVisible = ref(false); // Управление видимостью диалога
+
+const sendEmail = async () => {
+  if (!selectedTemplateId.value) {
+    toast.add({
+      severity: "warn",
+      summary: "Ошибка",
+      detail: "Выберите шаблон для отправки.",
+      life: 3000,
+    });
+    return;
+  }
+
+  try {
+    const response = await fetch(`/orders/${order.value.id}/send-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+      },
+      body: JSON.stringify({
+        template_id: selectedTemplateId.value,
+        custom_subject: customSubject.value,
+        custom_body: customBody.value,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      toast.add({
+        severity: "success",
+        summary: "Успешно",
+        detail: data.message,
+        life: 3000,
+      });
+      emailDialogVisible.value = false; // Закрыть диалог после успешной отправки
+    } else {
+      throw new Error(data.message || "Не удалось отправить письмо");
+    }
+  } catch (error) {
+    toast.add({
+      severity: "error",
+      summary: "Ошибка",
+      detail: error.message,
+      life: 5000,
+    });
+  }
+};
+
 
 const statuses = ref(props.statuses);
 const payment_methods = ref(props.payment_methods);
@@ -399,6 +453,17 @@ const formatDateTime = (date) => {
           <label for="product_quantity">Метод доставки</label>
         </IftaLabel>
         <Button label="Оновити" @click="updateOrder" class="mt-4" />
+
+
+        <hr>
+        <Button
+  label="Отправить Email"
+  icon="pi pi-envelope"
+  class="p-button-primary"
+  @click="emailDialogVisible = true"
+/>
+
+
       </div>
 
       <div>
@@ -748,6 +813,38 @@ const formatDateTime = (date) => {
     </div>
   </Dialog>
 
+  <Dialog
+  v-model:visible="emailDialogVisible"
+  header="Отправка Email"
+  :style="{ width: '50vw' }"
+  :breakpoints="{ '960px': '75vw', '640px': '90vw' }"
+>
+  <div class="grid grid-cols-1 gap-4">
+    <div>
+      <label for="template">Шаблон письма</label>
+      <Select
+        id="template"
+        v-model="selectedTemplateId"
+        :options="emailTemplates.map(template => ({ label: template.name, value: template.id }))"
+        optionValue="value" optionLabel="label"
+        placeholder="Выберите шаблон"
+        class="w-full"
+      />
+    </div>
+    <div>
+      <label for="custom-subject">Пользовательская тема</label>
+      <InputText id="custom-subject" v-model="customSubject" class="w-full" />
+    </div>
+    <div>
+      <label for="custom-body">Пользовательское тело</label>
+      <Textarea id="custom-body" v-model="customBody" rows="5" class="w-full" />
+    </div>
+  </div>
+  <template #footer>
+    <Button label="Отправить" icon="pi pi-send" class="p-button-success" @click="sendEmail" />
+    <Button label="Закрыть" icon="pi pi-times" class="p-button-secondary" @click="emailDialogVisible = false" />
+  </template>
+</Dialog>
 
 
 
