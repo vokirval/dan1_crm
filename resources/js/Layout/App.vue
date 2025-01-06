@@ -65,6 +65,7 @@ const menuItems = ref([
         icon: "Settings",
         children: [
             { label: "Користувачі", route: "/users" },
+            { label: "Шаблони Email", route: "/email-templates" },
             { label: "Групи користувачів", route: "/groups" },
             { label: "Ролі", route: "/roles" },
             { label: "Дозволи", route: "/permissions" },
