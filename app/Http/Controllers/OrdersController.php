@@ -191,7 +191,8 @@ class OrdersController extends Controller
                 'items.product:name,id',
                 'items.productVariation:id,product_id',
                 'items.productVariation.product:name,id',
-                'items.productVariation.attributes'
+                'items.productVariation.attributes',
+                'emailHistory' // Подгружаем историю писем
             ])->findOrFail($id);
         } else {
             $userGroupIds = $user->groups->pluck('id');
@@ -204,7 +205,8 @@ class OrdersController extends Controller
                     'items.product:name,id',
                     'items.productVariation:id,product_id',
                     'items.productVariation.product:name,id',
-                    'items.productVariation.attributes'
+                    'items.productVariation.attributes',
+                    'emailHistory' // Подгружаем историю писем
                 ])
                 ->findOrFail($id);
         }

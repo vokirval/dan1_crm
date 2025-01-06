@@ -149,7 +149,28 @@ Route::middleware(['auth'])->group(function() {
 
   
 
-    Route::resource('email-templates', EmailTemplateController::class);
+    Route::prefix('/email-templates')->group(function () {
+        Route::get('/', [EmailTemplateController::class, 'index'])
+            ->name('email-templates.index');
+            //->middleware('permission:Перегляд шаблонів email');
+        Route::get('/create', [EmailTemplateController::class, 'create'])
+            ->name('email-templates.create');
+            //->middleware('permission:Створення шаблонів email');
+        Route::post('/', [EmailTemplateController::class, 'store'])
+            ->name('email-templates.store');
+            //->middleware('permission:Створення шаблонів email');
+        Route::get('/{id}/edit', [EmailTemplateController::class, 'edit'])
+            ->name('email-templates.edit');
+            //->middleware('permission:Редагування шаблонів email');
+        Route::put('/{id}', [EmailTemplateController::class, 'update'])
+            ->name('email-templates.update');
+            //->middleware('permission:Редагування шаблонів email');
+        Route::delete('/{id}', [EmailTemplateController::class, 'destroy'])
+            ->name('email-templates.destroy');
+            //->middleware('permission:Видалення шаблонів email');
+    });
+
+    
     Route::post('/orders/{order}/send-email', [EmailController::class, 'sendEmail'])->name('orders.send-email');
 
 

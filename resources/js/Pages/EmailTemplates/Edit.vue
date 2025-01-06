@@ -1,23 +1,32 @@
 <script setup>
 import { ref } from "vue";
-import { router } from "@inertiajs/vue3";
+import { usePage, router } from "@inertiajs/vue3";
 import Layout from "../../Layout/App.vue";
 
+const { template } = usePage().props;
 const form = ref({
-  name: "",
-  subject: "",
-  body: "",
+  name: template.name,
+  subject: template.subject,
+  body: template.body,
 });
 
-const saveTemplate = () => {
-  router.post("/email-templates", form.value);
+const submitForm = () => {
+  router.put(`/email-templates/${template.id}`, form.value, {
+    onSuccess: () => {
+      alert("Шаблон успешно обновлен!");
+      router.visit("/email-templates");
+    },
+    onError: (errors) => {
+      alert(`Ошибка: ${Object.values(errors).join(", ")}`);
+    },
+  });
 };
 </script>
 
 <template>
   <Layout>
     <div>
-      <form @submit.prevent="saveTemplate">
+    <form @submit.prevent="submitForm">
         <div class="mb-4">
           <label class="block mb-2">Назва шаблона:</label>
           <input v-model="form.name" class="border p-2 w-full" />
@@ -159,7 +168,8 @@ const saveTemplate = () => {
     </table>
 </div>
 
-    </div>
+
+  </div>
   </Layout>
   </template>
   

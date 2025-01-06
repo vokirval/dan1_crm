@@ -80,6 +80,11 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function emailHistory()
+    {
+        return $this->hasMany(EmailHistory::class);
+    }
+
     public function getMacros(): array
 {
     // Генерируем HTML-таблицу с товарами
@@ -90,12 +95,30 @@ class Order extends Model
         '{customer_name}' => $this->delivery_fullname,
         '{customer_email}' => $this->email,
         '{customer_phone}' => $this->phone,
-        '{order_total}' => $this->items->sum(fn($item) => $item->quantity * $item->price), // Общая сумма заказа
+        '{order_total}' => number_format($this->items->sum(fn($item) => $item->quantity * $item->price), 2),
         '{order_date}' => $this->created_at->format('d.m.Y'),
         '{delivery_address}' => $this->delivery_address,
         '{delivery_city}' => $this->delivery_city,
         '{delivery_postcode}' => $this->delivery_postcode,
-        '{product_table}' => $productTable, // Вставляем таблицу с товарами
+        '{delivery_state}' => $this->delivery_state,
+        '{delivery_country_code}' => $this->delivery_country_code,
+        '{tracking_number}' => $this->tracking_number ?? '-',
+        '{is_paid}' => $this->is_paid ? 'Оплачено' : 'Не оплачено',
+        '{paid_amount}' => number_format($this->paid_amount, 2),
+        '{delivery_date}' => optional($this->delivery_date)->format('d.m.Y H:i:s') ?? '-',
+        '{payment_date}' => optional($this->payment_date)->format('d.m.Y H:i:s') ?? '-',
+        '{payment_method}' => $this->paymentMethod->name ?? '-',
+        '{delivery_method}' => $this->deliveryMethod->name ?? '-',
+        '{responsible_user}' => $this->responsibleUser->name ?? '-',
+        '{group_name}' => $this->group->name ?? '-',
+        '{order_status}' => $this->status->name ?? '-',
+        '{utm_source}' => $this->utm_source ?? '-',
+        '{utm_medium}' => $this->utm_medium ?? '-',
+        '{utm_term}' => $this->utm_term ?? '-',
+        '{utm_content}' => $this->utm_content ?? '-',
+        '{utm_campaign}' => $this->utm_campaign ?? '-',
+        '{product_table}' => $productTable,
+        '{comment}' => $this->comment ?? 'Нет комментариев',
     ];
 }
 

@@ -4,7 +4,7 @@ import { usePage, Head, router } from "@inertiajs/vue3";
 import Layout from "../../Layout/App.vue";
 import { Button, InputText, Textarea } from "primevue";
 import { useToast } from "primevue/usetoast";
-import { Trash, Check, Pencil } from "lucide-vue-next";
+import { Trash, Check, Pencil, MailPlus, Send } from "lucide-vue-next";
 import { useConfirm } from "primevue/useconfirm";
 
 const confirm = useConfirm();
@@ -17,6 +17,7 @@ const duplicateOrders = ref(props.duplicateOrders);
 const order = ref(props.order);
 const products = ref(props.products);
 const selectedProduct = ref(null);
+const customSendEmailTemplate = ref(false);
 const selectedVariation = ref(null);
 const dialogVisible = ref(false);
 const emailTemplates = ref(props.emailTemplates || []); // Список шаблонов email
@@ -26,11 +27,11 @@ const customBody = ref(""); // Пользовательское тело пис�
 const emailDialogVisible = ref(false); // Управление видимостью диалога
 
 const sendEmail = async () => {
-  if (!selectedTemplateId.value) {
+  if (!selectedTemplateId.value && (!customSubject.value || !customBody.value)) {
     toast.add({
       severity: "warn",
       summary: "Ошибка",
-      detail: "Выберите шаблон для отправки.",
+      detail: "Оберіть шаблон або заповніть тему та лист для відправки.",
       life: 3000,
     });
     return;
@@ -405,7 +406,7 @@ const formatDateTime = (date) => {
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <h3 class="font-bold text-lg mb-3">Информация о заказе</h3>
+        <h3 class="font-bold text-lg mb-3">Замовлення #{{ order.id }}</h3>
 
         <div class="mb-4">
           <label for="fullname">Имя</label>
@@ -432,10 +433,15 @@ const formatDateTime = (date) => {
             <label for="phone">Телефон</label>
             <InputText id="phone" v-model="form.phone" class="w-full" />
           </div>
-          <div>
-            <label for="email">Email</label>
-            <InputText id="email" v-model="form.email" class="w-full" />
+          <div class="flex">
+            <div class="w-full">
+              <label for="email">Email</label>
+              <InputText id="email" v-model="form.email" class="w-full" />
+            </div>
+           
+            <Button size="small" @click="emailDialogVisible = true" class="mt-6 ml-2"><MailPlus class="w-6 h-6"/></Button>
           </div>
+          <p>IP Юзера: {{ order.ip }}</p>
         </div>
         <div class="mb-4">
           <label for="comment">Комментарий</label>
@@ -453,15 +459,6 @@ const formatDateTime = (date) => {
           <label for="product_quantity">Метод доставки</label>
         </IftaLabel>
         <Button label="Оновити" @click="updateOrder" class="mt-4" />
-
-
-        <hr>
-        <Button
-  label="Отправить Email"
-  icon="pi pi-envelope"
-  class="p-button-primary"
-  @click="emailDialogVisible = true"
-/>
 
 
       </div>
@@ -649,18 +646,99 @@ const formatDateTime = (date) => {
         </table>
       </div>
     </div>
+
+
+    <h3 class="text-lg font-bold mb-3">Історія відправки листів</h3>
+      <table class="table-auto w-full border-collapse border border-gray-300">
+        <thead>
+          <tr>
+            <th class="border border-gray-300 p-2">Дата відправки</th>
+            <th class="border border-gray-300 p-2">Статус</th>
+            <th class="border border-gray-300 p-2">Email</th>
+            <th class="border border-gray-300 p-2">Тема</th>
+            <th class="border border-gray-300 p-2">Помилка</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="email in order.email_history" :key="email.id">
+            <td class="border border-gray-300 p-2">{{ email.sent_at || 'Не відправлено' }}</td>
+            <td class="border border-gray-300 p-2">
+              <span v-if="email.status === 'success'" class="text-green-600">Успішно</span>
+              <span v-else class="text-red-600">Помилка</span>
+            </td>
+            <td class="border border-gray-300 p-2">{{ email.to_email }}</td>
+            <td class="border border-gray-300 p-2">{{ email.subject }}</td>
+            <td class="border border-gray-300 p-2">{{ email.error_message || '-' }}</td>
+          </tr>
+        </tbody>
+      </table>
+
     
 
-       <Dialog v-model:visible="dialogVisible" header="Дублікати замовлення" :style="{ width: '75vw' }" maximizable modal :contentStyle="{ height: '300px' }">
-              <ul>
-              <li v-for="duplicate in duplicateOrders" :key="duplicate.id" class="flex items-center gap-3">
-                Замовлення #{{ duplicate.id }} | Клієнт: {{ duplicate.delivery_fullname }} | Телефон: {{ duplicate.phone }} | Email: {{ duplicate.email }} | IP: {{ duplicate.ip }} <Button size="small" @click="openOrderDialog(duplicate)"><Pencil class="w-5 h-5"/> Детально</Button>
-              </li>
-            </ul>
-            <template #footer>
-                <Button label="Закрити" icon="pi pi-check" @click="dialogVisible = false" />
-            </template>
-        </Dialog>
+      <Dialog 
+    v-model:visible="dialogVisible" 
+    header="Дублікати замовлення" 
+    :style="{ width: '75vw' }" 
+    maximizable 
+    modal 
+    :contentStyle="{ height: '300px' }"
+>
+    <div class="overflow-auto">
+        <table class="min-w-full border-collapse border border-gray-300">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="border border-gray-300 p-2">Статус</th>
+                    <th class="border border-gray-300 p-2">ID замовлення</th>
+                    <th class="border border-gray-300 p-2">Клієнт</th>
+                    <th class="border border-gray-300 p-2">Телефон</th>
+                    <th class="border border-gray-300 p-2">Email</th>
+                    <th class="border border-gray-300 p-2">IP</th>
+                    <th class="border border-gray-300 p-2">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="duplicate in duplicateOrders" :key="duplicate.id" class="even:bg-gray-50">
+                    <td class="border border-gray-300 p-2">
+                        <span v-if="duplicate.status" 
+                              class="rounded p-1 text-white text-xs"
+                              :style="{ backgroundColor: `#${duplicate.status.color}` }">
+                            {{ duplicate.status?.name }}
+                        </span>
+                        <span v-else class="rounded p-1 text-white bg-black text-xs">
+                            Без статусу
+                        </span>
+                    </td>
+                    <td class="border border-gray-300 p-2">
+                        #{{ duplicate.id }}
+                    </td>
+                    <td class="border border-gray-300 p-2">
+                        {{ duplicate.delivery_fullname }}
+                    </td>
+                    <td class="border border-gray-300 p-2" 
+                        :class="{'text-red-700 font-bold': duplicate.phone === order.phone}">
+                        {{ duplicate.phone }}
+                    </td>
+                    <td class="border border-gray-300 p-2" 
+                        :class="{'text-red-700 font-bold': duplicate.email === order.email}">
+                        {{ duplicate.email }}
+                    </td>
+                    <td class="border border-gray-300 p-2" 
+                        :class="{'text-red-700 font-bold': duplicate.ip === order.ip}">
+                        {{ duplicate.ip }}
+                    </td>
+                    <td class="border border-gray-300 p-2 text-center">
+                        <Button size="small" @click="openOrderDialog(duplicate)">
+                            <Pencil class="w-5 h-5" /> Детально
+                        </Button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</Dialog>
+
+
 
 
         <Dialog 
@@ -697,6 +775,7 @@ const formatDateTime = (date) => {
       <!-- Доставка -->
       <div class="text-base p-5 bg-[#f1f5f9]">
         <div class="grid grid-cols-6 gap-4 ">
+          
           <p><strong>Ім'я:</strong> {{ selectedOrder.delivery_fullname }}</p>
           <p><strong>Phone:</strong> {{ selectedOrder.phone }}</p>
           <p><strong>Місто:</strong> {{ selectedOrder.delivery_city }}</p>
@@ -815,34 +894,46 @@ const formatDateTime = (date) => {
 
   <Dialog
   v-model:visible="emailDialogVisible"
-  header="Отправка Email"
+  header="Відправка Email"
   :style="{ width: '50vw' }"
   :breakpoints="{ '960px': '75vw', '640px': '90vw' }"
 >
   <div class="grid grid-cols-1 gap-4">
-    <div>
-      <label for="template">Шаблон письма</label>
+  
+
+       <ToggleButton v-model="customSendEmailTemplate" onLabel="Вибрати зі списку шаблонів" offLabel="Створити лист самостійно" />
+
+      
+    <div v-if="customSendEmailTemplate == false">
+      <label for="template">Шаблон листа</label>
       <Select
         id="template"
         v-model="selectedTemplateId"
         :options="emailTemplates.map(template => ({ label: template.name, value: template.id }))"
         optionValue="value" optionLabel="label"
-        placeholder="Выберите шаблон"
+        placeholder="Оберіть шаблон"
         class="w-full"
       />
+      
+      
+      
     </div>
-    <div>
-      <label for="custom-subject">Пользовательская тема</label>
-      <InputText id="custom-subject" v-model="customSubject" class="w-full" />
+    <div v-else>
+      <div>
+        <label for="custom-subject">Тема</label>
+        <InputText id="custom-subject" v-model="customSubject" class="w-full" />
+      </div>
+      <div>
+        <label for="custom-body">Лист</label>
+        <Textarea id="custom-body" v-model="customBody" rows="5" class="w-full" />
+      </div>
     </div>
-    <div>
-      <label for="custom-body">Пользовательское тело</label>
-      <Textarea id="custom-body" v-model="customBody" rows="5" class="w-full" />
-    </div>
+
+
+    
   </div>
   <template #footer>
-    <Button label="Отправить" icon="pi pi-send" class="p-button-success" @click="sendEmail" />
-    <Button label="Закрыть" icon="pi pi-times" class="p-button-secondary" @click="emailDialogVisible = false" />
+    <Button class="p-button-success" @click="sendEmail"><Send /> Відправити</Button>
   </template>
 </Dialog>
 

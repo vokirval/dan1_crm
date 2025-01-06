@@ -19,6 +19,7 @@ Route::post('/change_status/{status_id}', function (Request $request, $status_id
         // Получаем данные из вебхукаs
         $webhookData = $request->validate([
             'external_id' => 'required|string', // Айдишник заказа
+            'tracking_number' => 'nullable|string', // Трекинг номер, может быть null
         ]);
 		
         // Ищем заказ по external_id
@@ -35,6 +36,13 @@ Route::post('/change_status/{status_id}', function (Request $request, $status_id
         $order->update([
             'order_status_id' => $status_id,
         ]);
+
+        // Обновляем трекинг номер, если он присутствует
+        if (!empty($webhookData['tracking_number'])) {
+            $order->update([
+                'tracking_number' => $webhookData['tracking_number'],
+            ]);
+        }
 
         return response()->json([
             'message' => 'Order status updated successfully.',
