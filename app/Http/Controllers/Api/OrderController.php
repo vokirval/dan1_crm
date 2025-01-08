@@ -25,7 +25,7 @@ class OrderController extends Controller
             'delivery_city' => 'nullable|string|max:100',
             'delivery_state' => 'nullable|string|max:100',
             'delivery_country_code' => 'nullable|string|max:10',
-            'email' => 'nullable|email|max:255',
+            'email' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
             'ip' => 'nullable|ip', // Делаем поле IP необязательным на этапе валидации
             'comment' => 'nullable|string',
