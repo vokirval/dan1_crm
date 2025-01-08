@@ -108,7 +108,7 @@ class OrderObserver
             'payment_method' => $paymentMethod,
             'shipment_payer' => 'RECEIVER',
             'shipment_type' => 'ADDRESS',
-            'country' => 'Poland',
+            'country' => 'PL',
             'city' => $order->delivery_city ?? 'Unknown',
             'address' => $order->delivery_address ?? 'Unknown',
             'second_address' => $order->delivery_second_address ?? '',

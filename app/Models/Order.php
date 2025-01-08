@@ -127,32 +127,62 @@ class Order extends Model
  */
 private function generateProductTable(): string
 {
-    $tableHeader = '<table border="1" cellspacing="0" cellpadding="5" style="border-collapse: collapse; width: 100%;">';
-    $tableHeader .= '<tr>';
-    $tableHeader .= '<th>Название</th>';
-    $tableHeader .= '<th>Количество</th>';
-    $tableHeader .= '<th>Цена</th>';
-    $tableHeader .= '<th>Сумма</th>';
-    $tableHeader .= '</tr>';
+    $tableHeader = '
+        <table class="table-auto w-full border-collapse border border-gray-300">
+            <thead>
+                <tr>
+                    <th class="border border-gray-300 p-2">Nazwa</th>
+                    <th class="border border-gray-300 p-2">Wariant</th>
+                    <th class="border border-gray-300 p-2">Ilość</th>
+                    <th class="border border-gray-300 p-2">Cena</th>
+                    <th class="border border-gray-300 p-2">Suma</th>
+                </tr>
+            </thead>
+            <tbody>
+    ';
 
     $tableRows = $this->items->map(function ($item) {
-        return sprintf(
-            '<tr>
-                <td>%s</td>
-                <td>%d</td>
-                <td>%0.2f</td>
-                <td>%0.2f</td>
+        $productName = $item->product->name ?? 'Produkt nie znaleziony';
+        $variationName = '-';
+        if ($item->productVariation) {
+            $productName = $item->productVariation->product->name ?? $productName;
+            $variationName = $item->productVariation->attributes
+                ->map(fn($attr) => "{$attr->attribute_name}: {$attr->attribute_value}")
+                ->join(', ') ?: '-';
+        }
+
+        return sprintf('
+            <tr>
+                <td class="border border-gray-300 p-2">%s</td>
+                <td class="border border-gray-300 p-2">%s</td>
+                <td class="border border-gray-300 p-2">%d</td>
+                <td class="border border-gray-300 p-2">%0.2f zł</td>
+                <td class="border border-gray-300 p-2">%0.2f zł</td>
             </tr>',
-            e($item->product->name ?? 'Не найдено'), // Название товара
+            e($productName),
+            e($variationName),
             $item->quantity,
             $item->price,
             $item->quantity * $item->price
         );
     })->join('');
 
-    $tableFooter = '</table>';
+    $totalAmount = $this->items->sum(fn($item) => $item->quantity * $item->price);
+
+    $tableFooter = sprintf('
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4" class="border border-gray-300 p-2 font-bold text-right">Łączna kwota:</td>
+                <td class="border border-gray-300 p-2 font-bold">%0.2f zł</td>
+            </tr>
+        </tfoot>
+        </table>',
+        $totalAmount
+    );
 
     return $tableHeader . $tableRows . $tableFooter;
 }
+
 
 }
