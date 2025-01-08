@@ -11,12 +11,103 @@ use Illuminate\Http\Request;
 class EmailController extends Controller
 {
     /**
-     * Метод для замены макросов в шаблоне письма.
+     * Замена макросов в шаблоне письма.
      */
     private function replaceMacros(string $templateBody, Order $order): string
     {
-        $macros = $order->getMacros(); // Получаем макросы из модели Order
+        $macros = $this->getMacros($order); // Генерируем макросы для письма
         return str_replace(array_keys($macros), array_values($macros), $templateBody);
+    }
+
+    /**
+     * Генерация списка шорткодов для письма.
+     */
+    private function getMacros(Order $order): array
+    {
+        // Генерация HTML-таблицы с товарами
+        $productTable = $this->generateProductTable($order);
+
+        return [
+            '{order_id}' => $order->id,
+            '{customer_name}' => $order->delivery_fullname,
+            '{customer_email}' => $order->email,
+            '{customer_phone}' => $order->phone,
+            '{order_total}' => number_format($order->items->sum(fn($item) => $item->quantity * $item->price), 2),
+            '{order_date}' => $order->created_at->format('d.m.Y'),
+            '{delivery_address}' => $order->delivery_address,
+            '{delivery_city}' => $order->delivery_city,
+            '{delivery_postcode}' => $order->delivery_postcode,
+            '{delivery_state}' => $order->delivery_state,
+            '{delivery_country_code}' => $order->delivery_country_code,
+            '{tracking_number}' => $order->tracking_number ?? '-',
+            '{is_paid}' => $order->is_paid ? 'Opłacone' : 'Nieopłacone',
+            '{paid_amount}' => number_format($order->paid_amount, 2),
+            '{delivery_date}' => optional($order->delivery_date)->format('d.m.Y H:i:s') ?? '-',
+            '{payment_date}' => optional($order->payment_date)->format('d.m.Y H:i:s') ?? '-',
+            '{payment_method}' => $order->paymentMethod->name ?? '-',
+            '{delivery_method}' => $order->deliveryMethod->name ?? '-',
+            '{responsible_user}' => $order->responsibleUser->name ?? '-',
+            '{group_name}' => $order->group->name ?? '-',
+            '{order_status}' => $order->status->name ?? '-',
+            '{utm_source}' => $order->utm_source ?? '-',
+            '{utm_medium}' => $order->utm_medium ?? '-',
+            '{utm_term}' => $order->utm_term ?? '-',
+            '{utm_content}' => $order->utm_content ?? '-',
+            '{utm_campaign}' => $order->utm_campaign ?? '-',
+            '{product_table}' => $productTable,
+            '{comment}' => $order->comment ?? '-',
+        ];
+    }
+
+    /**
+     * Генерация HTML-таблицы с товарами.
+     */
+    private function generateProductTable(Order $order): string
+    {
+        $tableHeader = '<table border="1" cellspacing="0" cellpadding="5" style="border-collapse: collapse; width: 100%;">';
+        $tableHeader .= '<tr>';
+        $tableHeader .= '<th>Nazwa</th>'; // Название
+        $tableHeader .= '<th>Wariant</th>'; // Вариант
+        $tableHeader .= '<th>Ilość</th>'; // Количество
+        $tableHeader .= '<th>Cena</th>'; // Цена
+        $tableHeader .= '<th>Suma</th>'; // Сумма
+        $tableHeader .= '</tr>';
+
+        $tableRows = $order->items->map(function ($item) {
+            $productName = $item->product->name ?? ($item->productVariation->product->name ?? '-');
+            $variationAttributes = $item->productVariation && $item->productVariation->relationLoaded('attributes')
+                ? $item->productVariation->attributes->map(function ($attr) {
+                    return "{$attr->attribute_name}: {$attr->attribute_value}";
+                })->join(', ')
+                : '-';
+
+            return sprintf(
+                '<tr>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%d</td>
+                    <td>%0.2f</td>
+                    <td>%0.2f</td>
+                </tr>',
+                e($productName),
+                e($variationAttributes),
+                $item->quantity,
+                $item->price,
+                $item->quantity * $item->price
+            );
+        })->join('');
+
+        $totalAmount = $order->items->sum(fn($item) => $item->quantity * $item->price);
+
+        $tableFooter = sprintf(
+            '<tr>
+                <td colspan="4" style="text-align: right; font-weight: bold;">Razem:</td>
+                <td>%0.2f</td>
+            </tr>',
+            $totalAmount
+        );
+
+        return $tableHeader . $tableRows . $tableFooter . '</table>';
     }
 
     /**
@@ -24,8 +115,18 @@ class EmailController extends Controller
      */
     public function sendEmail(Request $request, $orderId)
     {
-        $order = Order::findOrFail($orderId);
+        // Загружаем заказ с нужными зависимостями
+        $order = Order::with([
+            'items.product',
+            'items.productVariation.product',
+            'items.productVariation.attributes',
+            'paymentMethod',
+            'deliveryMethod',
+            'responsibleUser',
+            'status'
+        ])->findOrFail($orderId);
 
+        // Убедимся, что получен объект Order
         if (!($order instanceof Order)) {
             throw new \InvalidArgumentException('Invalid order object passed');
         }
@@ -36,10 +137,12 @@ class EmailController extends Controller
             'custom_body' => 'nullable|string|required_without:template_id',
         ]);
 
+        // Получение шаблона
         $template = $validated['template_id']
             ? EmailTemplate::findOrFail($validated['template_id'])
             : null;
 
+        // Замена макросов в теме и теле письма
         $subject = $template
             ? $this->replaceMacros($template->subject, $order)
             : $this->replaceMacros($validated['custom_subject'], $order);
@@ -49,12 +152,14 @@ class EmailController extends Controller
             : $this->replaceMacros($validated['custom_body'], $order);
 
         try {
+            // Отправка письма
             Mail::send([], [], function ($message) use ($order, $subject, $body) {
                 $message->to($order->email)
                     ->subject($subject)
                     ->html($body); // Указываем HTML-тело письма
             });
 
+            // Сохранение истории успешной отправки
             EmailHistory::create([
                 'order_id' => $order->id,
                 'template_id' => $template->id ?? null,
@@ -67,6 +172,7 @@ class EmailController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Email успешно отправлено!']);
         } catch (\Exception $e) {
+            // Сохранение истории ошибки
             EmailHistory::create([
                 'order_id' => $order->id,
                 'template_id' => $template->id ?? null,
@@ -80,6 +186,4 @@ class EmailController extends Controller
             return response()->json(['success' => false, 'message' => 'Ошибка отправки письма.', 'error' => $e->getMessage()]);
         }
     }
-
-
 }
