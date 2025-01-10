@@ -172,6 +172,8 @@ Route::middleware(['auth'])->group(function() {
 
     
     Route::post('/orders/{order}/send-email', [EmailController::class, 'sendEmail'])->name('orders.send-email');
+    Route::post('/orders/{order}/preview-template', [EmailController::class, 'previewTemplate'])->name('orders.preview-email');
+    Route::get('/email/macros', [EmailController::class, 'getMacrosList'])->name('email.get-macros');
 
 
 

@@ -186,4 +186,76 @@ class EmailController extends Controller
             return response()->json(['success' => false, 'message' => 'Ошибка отправки письма.', 'error' => $e->getMessage()]);
         }
     }
+
+    public function previewTemplate(Request $request, $orderId)
+    {
+        $request->validate([
+            'template_id' => 'required|exists:email_templates,id',
+        ]);
+
+        $order = Order::with([
+            'items.product',
+            'items.productVariation.product',
+            'items.productVariation.attributes',
+            'paymentMethod',
+            'deliveryMethod',
+            'responsibleUser',
+            'status'
+        ])->findOrFail($orderId);
+
+        // Убедимся, что получен объект Order
+        if (!($order instanceof Order)) {
+            throw new \InvalidArgumentException('Invalid order object passed');
+        }
+
+        $template = EmailTemplate::findOrFail($request->input('template_id'));
+
+        // Замена шорткодов в шаблоне
+        $body = $this->replaceMacros($template->body, $order);
+
+        return response()->json([
+            'success' => true,
+            'preview' => $body,
+        ]);
+    }
+
+    public function getMacrosList()
+    {
+        // Пример описаний макросов
+        $macrosDescriptions = [
+            '{order_id}' => 'ID замовлення',
+            '{customer_name}' => "Ім'я клієнта",
+            '{customer_email}' => 'Email клієнта',
+            '{customer_phone}' => 'Телефон клієнта',
+            '{order_total}' => 'Загальна сума замовлення',
+            '{order_date}' => 'Дата замовлення',
+            '{delivery_address}' => 'Адреса доставки',
+            '{delivery_city}' => 'Місто доставки',
+            '{delivery_postcode}' => 'Поштовий індекс доставки',
+            '{delivery_state}' => 'Штат/Область доставки',
+            '{delivery_country_code}' => 'Код країни доставки',
+            '{tracking_number}' => 'Трек-номер замовлення',
+            '{is_paid}' => 'Статус оплати замовлення',
+            '{paid_amount}' => 'Сплачена сума',
+            '{delivery_date}' => 'Дата доставки',
+            '{payment_date}' => 'Дата оплати',
+            '{payment_method}' => 'Метод оплати',
+            '{delivery_method}' => 'Метод доставки',
+            '{responsible_user}' => 'Відповідальний користувач',
+            '{group_name}' => 'Назва групи замовлення',
+            '{order_status}' => 'Статус замовлення',
+            '{utm_source}' => 'UTM Source',
+            '{utm_medium}' => 'UTM Medium',
+            '{utm_term}' => 'UTM Term',
+            '{utm_content}' => 'UTM Content',
+            '{utm_campaign}' => 'UTM Campaign',
+            '{product_table}' => 'Таблиця товарів замовлення',
+            '{comment}' => 'Коментар до замовлення',
+        ];
+        
+        
+
+        return response()->json($macrosDescriptions);
+    }
+
 }

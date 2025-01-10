@@ -4,7 +4,7 @@ import Layout from '../../Layout/App.vue';
 import { usePage, Head, router, Link } from '@inertiajs/vue3';
 import { DataTable, Column, Button } from 'primevue';
 import { useToast } from 'primevue/usetoast';
-import { Plus, Pencil } from 'lucide-vue-next';
+import { Plus, Pencil, Filter, FilterX, Search } from 'lucide-vue-next';
 
 const page = usePage();
 const toast = useToast();
@@ -12,6 +12,14 @@ const toast = useToast();
 const frozens = ref({
   'utm_source': false,
   'group': true
+});
+
+const filters = ref({
+  id: "",
+  delivery_fullname: "",
+  phone: "",
+  ip: "",
+  email: "",
 });
 
 const { props: inertiaProps } = usePage();
@@ -25,7 +33,7 @@ const perPage = ref(orders.value.per_page || 10);
 const currentPage = ref(orders.value.current_page || 1);
 const sortBy = ref('created_at');
 const sortDirection = ref('desc');
-
+const showFilters = ref(false);
 const visible = ref(false);
 const selectedOrder = ref(null);
 
@@ -58,6 +66,7 @@ const loadOrders = () => {
       sort_by: sortBy.value,
       sort_direction: sortDirection.value,
       status_id: currentStatusId.value,
+      ...filters.value, // Передаем все фильтры
     },
     {
       preserveState: true,
@@ -67,6 +76,27 @@ const loadOrders = () => {
     }
   );
 };
+
+const resetFilters = () => {
+  filters.value = {
+    id: "",
+    delivery_fullname: "",
+    phone: "",
+    ip: "",
+    email: "",
+  };
+  loadOrders();
+};
+
+onMounted(() => {
+  filters.value = {
+    id: inertiaProps.filters.id || "",
+    delivery_fullname: inertiaProps.filters.delivery_fullname || "",
+    phone: inertiaProps.filters.phone || "",
+    ip: inertiaProps.filters.ip || "",
+    email: inertiaProps.filters.email || "",
+  };
+});
 
 const viewOrder = (orderId) => {
   router.get(`/orders/${orderId}`, {}, {
@@ -153,10 +183,50 @@ const totalAmount = (selectedOrder) => {
         {{ status.name }} ({{ status.orders_count }})
       </div>
     </div>
-    <div class="flex justify-between items-center my-4">
+    <div class="flex justify-between items-center my-4 gap-3">
       <h2 class="text-xl font-semibold">Список замовлень</h2>
-      <Link href="/orders/create"  as="Button" class="p-button p-component p-button-contrast"><Plus /> Додати замовлення</Link>
+      <div class="flex gap-3">
+        <Button @click="showFilters = !showFilters" severity="secondary"><Filter class="w-5 h-5" /></Button>
+       <Link href="/orders/create"  as="Button" class="p-button p-component p-button-contrast"><Plus /> Додати замовлення</Link>
+      </div>
     </div>
+    <div v-if="showFilters" class="border border-top p-3 border-[#eee]">
+        <div class="mb-4 grid grid-cols-7 gap-3">
+          <input
+            type="text"
+            v-model="filters.id"
+            class="border border-gray-300 p-2 rounded"
+            placeholder="Пошук за ID"
+          />
+          <input
+            type="text"
+            v-model="filters.delivery_fullname"
+            class="border border-gray-300 p-2 rounded"
+            placeholder="Ім'я"
+          />
+          <input
+            type="text"
+            v-model="filters.phone"
+            class="border border-gray-300 p-2 rounded"
+            placeholder="Телефон"
+          />
+          <input
+            type="text"
+            v-model="filters.ip"
+            class="border border-gray-300 p-2 rounded"
+            placeholder="IP"
+          />
+          <input
+            type="text"
+            v-model="filters.email"
+            class="border border-gray-300 p-2 rounded"
+            placeholder="Пошта"
+          />
+          <Button class="text-xs" @click="loadOrders"><Search class="w-5 h-5"/> Пошук</Button>
+          <Button class="text-xs" @click="resetFilters"><FilterX class="w-5 h-5"/>Скинути</Button>
+        </div>
+     
+      </div>
 
     <DataTable
   
@@ -176,6 +246,7 @@ const totalAmount = (selectedOrder) => {
       dataKey="id"
       scrollable 
       @row-dblclick="openOrderDialog"
+      size="small"
     class=""
     >
     <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
@@ -198,6 +269,7 @@ const totalAmount = (selectedOrder) => {
 
       <Column field="delivery_fullname" header="Контакт" />
       <Column field="phone" header="Телефон" />
+      <Column field="email" header="Email" />
       <Column field="comment" header="Коментар" />
       <Column  header="Товари">
         <template #body="{ data }">

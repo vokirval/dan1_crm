@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { usePage, Head, router } from "@inertiajs/vue3";
 import Layout from "../../Layout/App.vue";
 import { Button, InputText, Textarea } from "primevue";
@@ -25,6 +25,94 @@ const selectedTemplateId = ref(null); // Выбранный шаблон
 const customSubject = ref(""); // Пользовательская тема
 const customBody = ref(""); // Пользовательское тело письма
 const emailDialogVisible = ref(false); // Управление видимостью диалога
+
+const previewHtml = ref(""); // HTML для предпросмотра
+const previewDialogVisible = ref(false); // Видимость модального окна предпросмотра
+const macros = ref([]);
+
+watch(customSendEmailTemplate, (newValue) => {
+  if (newValue) {
+    fetchMacros();
+    selectedTemplateId.value = null;
+  }
+});
+
+
+const fetchMacros = async () => {
+  try {
+    const response = await fetch('/email/macros', {
+      headers: {
+        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+      },
+    });
+    const data = await response.json();
+    macros.value = Object.entries(data).map(([key, description]) => ({
+      key,
+      description,
+    }));
+  } catch (error) {
+    toast.add({
+      severity: "error",
+      summary: "Ошибка",
+      detail: "Не удалось загрузить макросы.",
+      life: 5000,
+    });
+  }
+};
+
+const insertMacro = (macro) => {
+  const textarea = document.getElementById("custom-body");
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+
+  textarea.value = text.substring(0, start) + macro + text.substring(end);
+  textarea.selectionStart = textarea.selectionEnd = start + macro.length;
+  textarea.focus();
+};
+
+
+
+const previewTemplate = async () => {
+  if (!selectedTemplateId.value) {
+    toast.add({
+      severity: "warn",
+      summary: "Ошибка",
+      detail: "Выберите шаблон для предпросмотра.",
+      life: 3000,
+    });
+    return;
+  }
+
+  try {
+    const response = await fetch(`/orders/${order.value.id}/preview-template`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+      },
+      body: JSON.stringify({
+        template_id: selectedTemplateId.value,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      previewHtml.value = data.preview; // HTML для отображения предпросмотра
+      previewDialogVisible.value = true; // Открываем модальное окно
+    } else {
+      throw new Error("Ошибка получения предпросмотра.");
+    }
+  } catch (error) {
+    toast.add({
+      severity: "error",
+      summary: "Ошибка",
+      detail: error.message,
+      life: 5000,
+    });
+  }
+};
 
 const sendEmail = async () => {
   if (!selectedTemplateId.value && (!customSubject.value || !customBody.value)) {
@@ -901,7 +989,7 @@ const formatDateTime = (date) => {
   <div class="grid grid-cols-1 gap-4">
   
 
-       <ToggleButton v-model="customSendEmailTemplate" onLabel="Вибрати зі списку шаблонів" offLabel="Створити лист самостійно" />
+    <ToggleButton v-model="customSendEmailTemplate" onLabel="Вибрати зі списку шаблонів" offLabel="Створити лист самостійно" />
 
       
     <div v-if="customSendEmailTemplate == false">
@@ -909,21 +997,38 @@ const formatDateTime = (date) => {
       <Select
         id="template"
         v-model="selectedTemplateId"
+        @change="previewTemplate"
         :options="emailTemplates.map(template => ({ label: template.name, value: template.id }))"
         optionValue="value" optionLabel="label"
         placeholder="Оберіть шаблон"
         class="w-full"
       />
       
-      
-      
+      <div v-if="selectedTemplateId">
+        <h3 class="mt-5">Превью шаблона:</h3>
+       <div class="p-3 border border-[#000]" v-html="previewHtml"></div>
+      </div>
+
     </div>
     <div v-else>
+      <div class="mb-6">
+        <h3 class="text-lg font-bold mb-3">Доступні макроси</h3>
+        <ul class="space-y-1 flex gap-3 w-full flex-wrap">
+          <li
+            v-for="macro in macros"
+            :key="macro.key"
+            @click="insertMacro(macro.key)"
+            class="bg-gray-100 p-1 rounded shadow cursor-pointer hover:bg-gray-200 "
+          >
+            <span class="text-xs text-gray-500" v-tooltip.top="macro.description">{{ macro.key }}</span>
+          </li>
+        </ul>
+      </div>
       <div>
         <label for="custom-subject">Тема</label>
         <InputText id="custom-subject" v-model="customSubject" class="w-full" />
       </div>
-      <div>
+      <div class="mt-3">
         <label for="custom-body">Лист</label>
         <Textarea id="custom-body" v-model="customBody" rows="5" class="w-full" />
       </div>

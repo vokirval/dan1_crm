@@ -26,6 +26,7 @@ class OrdersController extends Controller
         $sortBy = $request->input('sort_by', 'created_at');
         $sortDirection = $request->input('sort_direction', 'desc');
         $statusId = $request->input('status_id');
+        $filters = $request->only(['id', 'delivery_fullname', 'phone', 'ip', 'email']);
         $user = auth()->user();
 
         // Проверяем, является ли пользователь супер-админом
@@ -41,6 +42,13 @@ class OrdersController extends Controller
         // Фильтрация по статусу, если статус выбран
         if ($statusId) {
             $ordersQuery->where('order_status_id', $statusId);
+        }
+
+        // Фильтрация по каждому полю
+        foreach ($filters as $key => $value) {
+            if ($value) {
+                $ordersQuery->where($key, 'like', "%{$value}%");
+            }
         }
 
         // Применяем сортировку и пагинацию
@@ -87,6 +95,7 @@ class OrdersController extends Controller
             'data' => $orders,
             'statuses' => $statuses,
             'currentStatusId' => $statusId, // Передаем текущий статус для синхронизации
+            'filters' => $filters, // Передаем текущие фильтры
         ]);
     }
 
