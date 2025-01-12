@@ -101,6 +101,10 @@ const submitForm = () => {
                 <td class="py-2 px-4 border-b">Трекинг-номер заказа (поле <code>tracking_number</code>).</td>
             </tr>
             <tr>
+                <td class="py-2 px-4 border-b">{website_referrer}</td>
+                <td class="py-2 px-4 border-b">Сайт на якому було створено замовлення</td>
+            </tr>
+            <tr>
                 <td class="py-2 px-4 border-b">{is_paid}</td>
                 <td class="py-2 px-4 border-b">Статус оплаты (<code>Оплачено</code> или <code>Не оплачено</code>).</td>
             </tr>
