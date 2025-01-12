@@ -44,6 +44,10 @@ class OrderController extends Controller
             'items.*.price' => 'required|numeric|min:0',
         ]);
 
+        if (!empty($validated['phone'])) {
+            $validated['phone'] = str_replace(' ', '', $validated['phone']);
+        }
+
         // Устанавливаем IP-адрес пользователя, если он не предоставлен
         $validated['ip'] = $validated['ip'] ?? $request->ip();
 

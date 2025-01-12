@@ -40,6 +40,7 @@ class EmailController extends Controller
             '{delivery_state}' => $order->delivery_state,
             '{delivery_country_code}' => $order->delivery_country_code,
             '{tracking_number}' => $order->tracking_number ?? '-',
+            '{website_referrer}' => $order->website_referrer ?? '-',
             '{is_paid}' => $order->is_paid ? 'Opłacone' : 'Nieopłacone',
             '{paid_amount}' => number_format($order->paid_amount, 2),
             '{delivery_date}' => optional($order->delivery_date)->format('d.m.Y H:i:s') ?? '-',
@@ -136,7 +137,6 @@ class EmailController extends Controller
             'custom_subject' => 'nullable|string|required_without:template_id',
             'custom_body' => 'nullable|string|required_without:template_id',
         ]);
-
         // Получение шаблона
         $template = $validated['template_id']
             ? EmailTemplate::findOrFail($validated['template_id'])
@@ -235,6 +235,7 @@ class EmailController extends Controller
             '{delivery_state}' => 'Штат/Область доставки',
             '{delivery_country_code}' => 'Код країни доставки',
             '{tracking_number}' => 'Трек-номер замовлення',
+            '{website_referrer}' => 'Сайт на якому було створено замовлення',
             '{is_paid}' => 'Статус оплати замовлення',
             '{paid_amount}' => 'Сплачена сума',
             '{delivery_date}' => 'Дата доставки',

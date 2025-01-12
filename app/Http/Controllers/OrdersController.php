@@ -140,7 +140,7 @@ class OrdersController extends Controller
             'delivery_city' => 'nullable|string|max:100',
             'delivery_state' => 'nullable|string|max:100',
             'delivery_country_code' => 'nullable|string|max:10',
-            'email' => 'nullable|email|max:255',
+            'email' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
             'ip' => 'nullable|ip', // Делаем поле IP необязательным на этапе валидации
             'comment' => 'nullable|string',
@@ -163,6 +163,11 @@ class OrdersController extends Controller
             'is_paid' => 'nullable|boolean', // Новое поле
             'paid_amount' => 'nullable|numeric|min:0', // Новое поле
         ]);
+
+        // Удаляем пробелы в номере телефона
+        if (!empty($validated['phone'])) {
+            $validated['phone'] = str_replace(' ', '', $validated['phone']);
+        }
 
         // Устанавливаем IP-адрес пользователя, если он не предоставлен
         $validated['ip'] = $validated['ip'] ?? $request->ip();
@@ -282,7 +287,7 @@ class OrdersController extends Controller
             'delivery_city' => 'nullable|string|max:100',
             'delivery_state' => 'nullable|string|max:100',
             'delivery_country_code' => 'nullable|string|max:10',
-            'email' => 'nullable|email|max:255',
+            'email' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
             'ip' => 'nullable|ip', // Делаем поле IP необязательным на этапе валидации
             'comment' => 'nullable|string',

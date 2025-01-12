@@ -25,7 +25,7 @@ const selectedTemplateId = ref(null); // Выбранный шаблон
 const customSubject = ref(""); // Пользовательская тема
 const customBody = ref(""); // Пользовательское тело письма
 const emailDialogVisible = ref(false); // Управление видимостью диалога
-
+const isPaidAmountFocused = ref(false);
 const previewHtml = ref(""); // HTML для предпросмотра
 const previewDialogVisible = ref(false); // Видимость модального окна предпросмотра
 const macros = ref([]);
@@ -37,6 +37,10 @@ watch(customSendEmailTemplate, (newValue) => {
   }
 });
 
+const setTotalAmountToPaidInput = () => {
+  form.value.paid_amount = totalAmount(order.value.items);
+  isPaidAmountFocused.value = false; // Скрываем подсказку после клика
+};
 
 const fetchMacros = async () => {
   try {
@@ -59,18 +63,24 @@ const fetchMacros = async () => {
     });
   }
 };
-
+const customBodyTextarea = ref(null);
 const insertMacro = (macro) => {
-  const textarea = document.getElementById("custom-body");
+  if (!customBodyTextarea.value) return;
+
+  const textarea = customBodyTextarea.value.$el || customBodyTextarea.value;
   const start = textarea.selectionStart;
   const end = textarea.selectionEnd;
-  const text = textarea.value;
 
-  textarea.value = text.substring(0, start) + macro + text.substring(end);
-  textarea.selectionStart = textarea.selectionEnd = start + macro.length;
-  textarea.focus();
+  customBody.value =
+    customBody.value.substring(0, start) +
+    macro +
+    customBody.value.substring(end);
+
+  nextTick(() => {
+    textarea.selectionStart = textarea.selectionEnd = start + macro.length;
+    textarea.focus();
+  });
 };
-
 
 
 const previewTemplate = async () => {
@@ -607,9 +617,25 @@ const formatDateTime = (date) => {
           <label for="payment_date">Дата онлайн оплати</label>
         </IftaLabel>
 
-        <div class="mb-4 mt-5">
+        <div class="mb-4 mt-5 relative">
           <label for="paid_amount">Сума оплати</label>
-          <InputText id="paid_amount" v-model="form.paid_amount" class="w-full" />
+          <InputText
+            id="paid_amount"
+            v-model="form.paid_amount"
+            class="w-full"
+            @focus="isPaidAmountFocused = true"
+            @blur="isPaidAmountFocused = false"
+          />
+          <!-- Подсказка с суммой заказа -->
+           <div class="mt-3" v-if="isPaidAmountFocused">
+            <span
+              
+              class="bg-red-500 text-white p-2 rounded cursor-pointer shadow"
+              @mousedown.stop.prevent="setTotalAmountToPaidInput" 
+            >
+              {{ formatCurrency(totalAmount(order.items)) }}
+            </span>
+          </div>
         </div>
 
         <div class="mb-4">
@@ -876,6 +902,7 @@ const formatDateTime = (date) => {
           <p><strong>Метод оплати:</strong> {{ selectedOrder.payment_method?.name }}</p>
           <p><strong>Email:</strong> {{ selectedOrder.email }}</p>
           <p><strong>Комент:</strong> {{ selectedOrder.comment || 'N/A' }}</p>
+          <p><strong>Трекінг Номер:</strong> {{ selectedOrder.tracking_number || 'N/A' }}</p> 
           
         </div>
       </div>
@@ -1030,7 +1057,13 @@ const formatDateTime = (date) => {
       </div>
       <div class="mt-3">
         <label for="custom-body">Лист</label>
-        <Textarea id="custom-body" v-model="customBody" rows="5" class="w-full" />
+        <Textarea
+          id="custom-body"
+          ref="customBodyTextarea"
+          v-model="customBody"
+          rows="5"
+          class="w-full"
+        />
       </div>
     </div>
 

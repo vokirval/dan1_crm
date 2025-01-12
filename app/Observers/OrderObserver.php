@@ -38,7 +38,20 @@ class OrderObserver
         if ($alreadySent) {
             \Log::info('Order already sent to Panel Expansion', ['order_id' => $order->id]);
             return;
-        } 
+        }
+
+        // Проверяем валидность email
+        if (!filter_var($order->email, FILTER_VALIDATE_EMAIL)) {
+            // Если email невалидный, переводим заказ в статус "с ошибками" (например, статус 12)
+            $order->update(['order_status_id' => 12]);
+            OrderFulfillment::create([
+                'order_id' => $order->id,
+                'sent' => false,
+                'comment' => 'Invalid email address.',
+            ]);
+            \Log::warning('Order not sent: invalid email address', ['order_id' => $order->id, 'email' => $order->email]);
+            return;
+        }
 
         // Проверка флага оплаты, если метод оплаты не равен 1 (COD ) 
         if ($order->payment_method_id != 1 && !$order->is_paid) {

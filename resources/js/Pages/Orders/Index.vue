@@ -4,7 +4,7 @@ import Layout from '../../Layout/App.vue';
 import { usePage, Head, router, Link } from '@inertiajs/vue3';
 import { DataTable, Column, Button } from 'primevue';
 import { useToast } from 'primevue/usetoast';
-import { Plus, Pencil, Filter, FilterX, Search } from 'lucide-vue-next';
+import { Plus, Pencil, Filter, FilterX, Search, RefreshCcw } from 'lucide-vue-next';
 
 const page = usePage();
 const toast = useToast();
@@ -27,7 +27,7 @@ console.log(inertiaProps);
 const orders = ref(inertiaProps.data || []);
 const statuses = inertiaProps.statuses || [];
 const currentStatusId = ref(inertiaProps.currentStatusId || null);
-
+const isLoading = ref(false);
 const fetchRoute = "/orders";
 const perPage = ref(orders.value.per_page || 10);
 const currentPage = ref(orders.value.current_page || 1);
@@ -58,6 +58,7 @@ const onSortChange = (event) => {
 };
 
 const loadOrders = () => {
+  isLoading.value = true;
   router.get(
     fetchRoute,
     {
@@ -72,6 +73,9 @@ const loadOrders = () => {
       preserveState: true,
       onSuccess: (page) => {
         orders.value = page.props.data;
+      },
+      onFinish: () => {
+        isLoading.value = false; // Выключаем состояние загрузки
       },
     }
   );
@@ -184,7 +188,12 @@ const totalAmount = (selectedOrder) => {
       </div>
     </div>
     <div class="flex justify-between items-center my-4 gap-3">
-      <h2 class="text-xl font-semibold">Список замовлень</h2>
+      <Button @click="loadOrders" severity="secondary" :disabled="isLoading">
+        <RefreshCcw 
+          class="w-5 h-5 transition-transform duration-500 ease-in-out" 
+          :class="{ 'animate-spin': isLoading }" 
+        />
+      </Button>
       <div class="flex gap-3">
         <Button @click="showFilters = !showFilters" severity="secondary"><Filter class="w-5 h-5" /></Button>
        <Link href="/orders/create"  as="Button" class="p-button p-component p-button-contrast"><Plus /> Додати замовлення</Link>
@@ -247,7 +256,7 @@ const totalAmount = (selectedOrder) => {
       scrollable 
       @row-dblclick="openOrderDialog"
       size="small"
-    class=""
+      :class="{ 'blur-sm pointer-events-none': isLoading }"
     >
     <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
       <Column field="id" header="ID" />
@@ -314,7 +323,7 @@ const totalAmount = (selectedOrder) => {
       <Column class="w-[40px]" header="Оплата">
         <template #body="{ data }">
             <span v-if="data.is_paid"
-            class="rounded flex items-center justify-center p-1 text-white text-xs bg-black" >
+            class="rounded flex items-center justify-center p-1 text-white text-xs bg-green-500" >
             Оплачено
             </span>
             <span v-else
@@ -393,14 +402,14 @@ const totalAmount = (selectedOrder) => {
             Без статусу
             </span>
            </p>
-            <p><strong>Відповідальний:</strong> {{ selectedOrder.responsible_user?.name }}</p>
+            <p><strong>Трекінг Номер:</strong> {{ selectedOrder.tracking_number || '-' }}</p>
             <Button size="small" @click="viewOrder(selectedOrder.id)"><Pencil class="w-5 h-5"/> Редагувати замовлення</Button>
         </div>
       </div>
 
       <!-- Доставка -->
       <div class="text-base p-5 bg-[#f1f5f9]">
-        <div class="grid grid-cols-6 gap-4 ">
+        <div class="grid grid-cols-5 gap-4 ">
           <p><strong>Ім'я:</strong> {{ selectedOrder.delivery_fullname }}</p>
           <p><strong>Phone:</strong> {{ selectedOrder.phone }}</p>
           <p><strong>Місто:</strong> {{ selectedOrder.delivery_city }}</p>
@@ -413,6 +422,7 @@ const totalAmount = (selectedOrder) => {
           <p><strong>Метод оплати:</strong> {{ selectedOrder.payment_method?.name }}</p>
           <p><strong>Email:</strong> {{ selectedOrder.email }}</p>
           <p><strong>Комент:</strong> {{ selectedOrder.comment || 'N/A' }}</p>
+          <p><strong>Відповідальний:</strong> {{ selectedOrder.responsible_user?.name }}</p> 
           
         </div>
       </div>
