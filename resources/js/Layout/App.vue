@@ -99,7 +99,12 @@ const isChildPage = computed(() => {
   return pathSegments.length > 1; // Если сегментов больше 1, это дочерняя страница
 });
 
-
+// Возвращаем пользователя назад
+const goBack = () => {
+  
+    window.history.back(); // Возвращаемся на предыдущую страницу, если есть referrer
+  
+};
 
 </script>
 
