@@ -321,7 +321,7 @@ class OrdersController extends Controller
         $newStatusId = $validated['order_status_id'] ?? null;
         $currentStatusId = $order->order_status_id;
         $newStatusIdForNew = 1; // ID статуса "new"
-        $allowedStatusesForNew = [2, 11, 13]; // IDs статусов: "Апрув", "Кенсел", "Коррекшен Овн"
+        $allowedStatusesForNew = [2, 11, 13, 1]; // IDs статусов: "Апрув", "Кенсел", "Коррекшен Овн"
 
         // Проверяем, можно ли сменить статус
         if ($currentStatusId === $newStatusIdForNew && $newStatusId !== null && !in_array($newStatusId, $allowedStatusesForNew)) {
@@ -457,7 +457,7 @@ class OrdersController extends Controller
     
         $newStatusId = $validated['status_id'];
         $newStatusIdForNew = 1; // ID статуса "new"
-         $allowedStatusesForNew = [2, 11, 13]; // IDs статусов: "Апрув", "Кенсел", "Коррекшен Овн"
+         $allowedStatusesForNew = [2, 11, 13, 1]; // IDs статусов: "Апрув", "Кенсел", "Коррекшен Овн"
     
         $orders = Order::whereIn('id', $validated['order_ids'])->get();
     
