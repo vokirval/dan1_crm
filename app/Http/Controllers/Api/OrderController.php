@@ -45,8 +45,10 @@ class OrderController extends Controller
         ]);
 
         if (!empty($validated['phone'])) {
-            $validated['phone'] = str_replace(' ', '', $validated['phone']);
+            $validated['phone'] = str_replace([' ', '+', '-', '(', ')'], '', $validated['phone']);
         }
+        
+        
 
         // Устанавливаем IP-адрес пользователя, если он не предоставлен
         $validated['ip'] = $validated['ip'] ?? $request->ip();

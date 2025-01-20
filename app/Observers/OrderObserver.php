@@ -15,6 +15,7 @@ class OrderObserver
 
     public function updated(Order $order)
     {
+
         defer(function() use ($order) {
             sleep(10);
             $this->panelExpansion($order);

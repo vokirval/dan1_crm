@@ -29,6 +29,14 @@ class OrdersController extends Controller
         $filters = $request->only(['id', 'delivery_fullname', 'phone', 'ip', 'email']);
         $user = auth()->user();
 
+        // Разрешенные поля для сортировки
+        $allowedSortFields = ['id', 'created_at', 'updated_at', 'delivery_fullname', 'phone', 'email', 'delivery_city'];
+
+        // Проверка сортировки
+        if (!in_array($sortBy, $allowedSortFields)) {
+            $sortBy = 'created_at';
+        }
+
         // Проверяем, является ли пользователь супер-админом
         if ($user->hasRole('Super Admin')) {
             $ordersQuery = Order::query();
@@ -166,8 +174,9 @@ class OrdersController extends Controller
 
         // Удаляем пробелы в номере телефона
         if (!empty($validated['phone'])) {
-            $validated['phone'] = str_replace(' ', '', $validated['phone']);
+            $validated['phone'] = str_replace([' ', '+', '-', '(', ')'], '', $validated['phone']);
         }
+        
 
         // Устанавливаем IP-адрес пользователя, если он не предоставлен
         $validated['ip'] = $validated['ip'] ?? $request->ip();
@@ -308,6 +317,20 @@ class OrdersController extends Controller
 
         
 
+        // Ограничения на смену статуса
+        $newStatusId = $validated['order_status_id'] ?? null;
+        $currentStatusId = $order->order_status_id;
+        $newStatusIdForNew = 1; // ID статуса "new"
+        $allowedStatusesForNew = [2, 11, 13]; // IDs статусов: "Апрув", "Кенсел", "Коррекшен Овн"
+
+        // Проверяем, можно ли сменить статус
+        if ($currentStatusId === $newStatusIdForNew && $newStatusId !== null && !in_array($newStatusId, $allowedStatusesForNew)) {
+            return back()->withErrors([
+                'order_status_id' => 'Проблема статусу! Оберіть інший статус!.',
+            ]);
+        }
+
+        // Обновляем заказ
         $order->update($validated);
 
         return back()->with('success', 'Order updated successfully.');
@@ -403,5 +426,73 @@ class OrdersController extends Controller
 
         return back()->with('success', 'Товар успешно удален из заказа.');
     }
+
+
+    /**
+     * Массовое удаление заказов.
+     */
+    public function massDelete(Request $request)
+    {
+        $validated = $request->validate([
+            'order_ids' => 'required|array',
+            'order_ids.*' => 'exists:orders,id',
+        ]);
+
+        Order::whereIn('id', $validated['order_ids'])->delete();
+
+        return back()->with('success', 'Замовлення успішно видалені!');
+
+    }
+
+    /**
+     * Массовая смена статусов заказов.
+     */
+    public function massUpdateStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'order_ids' => 'required|array',
+            'order_ids.*' => 'exists:orders,id',
+            'status_id' => 'required|exists:order_statuses,id',
+        ]);
+    
+        $newStatusId = $validated['status_id'];
+        $newStatusIdForNew = 1; // ID статуса "new"
+         $allowedStatusesForNew = [2, 11, 13]; // IDs статусов: "Апрув", "Кенсел", "Коррекшен Овн"
+    
+        $orders = Order::whereIn('id', $validated['order_ids'])->get();
+    
+        foreach ($orders as $order) {
+            // Если текущий статус "new", проверяем разрешенные статусы
+            if ($order->order_status_id === $newStatusIdForNew && !in_array($newStatusId, $allowedStatusesForNew)) {
+                \Log::warning('Невозможно изменить статус заказа с "new" на недопустимый статус.', [
+                    'order_id' => $order->id,
+                    'attempted_status' => $newStatusId,
+                ]);
+                continue; // Пропускаем заказ
+            }
+    
+            // Обновляем статус заказа
+            $order->update(['order_status_id' => $newStatusId]);
+        }
+
+        return back()->with('success', 'Статус успішно оновлено!');
+    }
+
+    /**
+     * Массовое изменение комментариев в заказах.
+     */
+    public function massUpdateComment(Request $request)
+    {
+        $validated = $request->validate([
+            'order_ids' => 'required|array',
+            'order_ids.*' => 'exists:orders,id',
+            'comment' => 'nullable|string',
+        ]);
+
+        Order::whereIn('id', $validated['order_ids'])->update(['comment' => $validated['comment']]);
+
+        return back()->with('success', 'Коментар успішно оновлено!');
+    }
+
 
 }

@@ -630,7 +630,7 @@ const formatDateTime = (date) => {
            <div class="mt-3" v-if="isPaidAmountFocused">
             <span
               
-              class="bg-red-500 text-white p-2 rounded cursor-pointer shadow"
+              class="bg-green-500 text-white p-2 rounded cursor-pointer shadow"
               @mousedown.stop.prevent="setTotalAmountToPaidInput" 
             >
               {{ formatCurrency(totalAmount(order.items)) }}
@@ -807,6 +807,10 @@ const formatDateTime = (date) => {
                     <th class="border border-gray-300 p-2">Телефон</th>
                     <th class="border border-gray-300 p-2">Email</th>
                     <th class="border border-gray-300 p-2">IP</th>
+                    <th class="border border-gray-300 p-2">Товари</th>
+                    <th class="border border-gray-300 p-2">Коментар</th>
+                    <th class="border border-gray-300 p-2">ЗІП-код</th>
+                    <th class="border border-gray-300 p-2">Метод оплати</th>
                     <th class="border border-gray-300 p-2">Действия</th>
                 </tr>
             </thead>
@@ -839,6 +843,45 @@ const formatDateTime = (date) => {
                     <td class="border border-gray-300 p-2" 
                         :class="{'text-red-700 font-bold': duplicate.ip === order.ip}">
                         {{ duplicate.ip }}
+                    </td>
+                    <td class="border border-gray-300 p-2" >
+                      <div v-for="item in duplicate.items" :key="item.id">
+                        <div class=" text-xs">
+                          <span v-if="item.product_id">{{
+                            item.product.name
+                          }}</span>
+                          <span v-else-if="item.product_variation_id">
+                            {{
+                              item.product_variation.product.name
+                            }}</span>
+                          <span v-else>Товар не знайдено...</span>
+                            
+                          <span v-if="item.product_variation_id">
+                            | {{
+                              formatVariationName(
+                                item.product_variation
+                              )
+                            }}
+                          </span>
+                        
+                          |  x{{ item.quantity }}
+                
+                        
+                          
+                          | {{ item.price }}
+                          
+
+                        </div>
+                      </div>
+                    </td>
+                    <td class="border border-gray-300 p-2" >
+                        {{ duplicate.comment || '-' }}
+                    </td>
+                    <td class="border border-gray-300 p-2" >
+                        {{ duplicate.delivery_postcode || '-' }}
+                    </td>
+                    <td class="border border-gray-300 p-2" >
+                        {{ duplicate.payment_method?.name }}
                     </td>
                     <td class="border border-gray-300 p-2 text-center">
                         <Button size="small" @click="openOrderDialog(duplicate)">

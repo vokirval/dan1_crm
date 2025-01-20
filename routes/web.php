@@ -175,6 +175,10 @@ Route::middleware(['auth'])->group(function() {
     Route::post('/orders/{order}/preview-template', [EmailController::class, 'previewTemplate'])->name('orders.preview-email');
     Route::get('/email/macros', [EmailController::class, 'getMacrosList'])->name('email.get-macros');
 
+    Route::post('/orders/mass-delete', [OrdersController::class, 'massDelete'])->name('orders.massDelete');
+    Route::post('/orders/mass-update-status', [OrdersController::class, 'massUpdateStatus'])->name('orders.massUpdateStatus');
+    Route::post('/orders/mass-update-comment', [OrdersController::class, 'massUpdateComment'])->name('orders.massUpdateComment');
+
 
 
 });

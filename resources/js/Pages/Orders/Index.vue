@@ -5,9 +5,11 @@ import { usePage, Head, router, Link } from '@inertiajs/vue3';
 import { DataTable, Column, Button } from 'primevue';
 import { useToast } from 'primevue/usetoast';
 import { Plus, Pencil, Filter, FilterX, Search, RefreshCcw } from 'lucide-vue-next';
+import { useConfirm } from "primevue/useconfirm";
 
 const page = usePage();
 const toast = useToast();
+const confirm = useConfirm();
 
 const frozens = ref({
   'utm_source': false,
@@ -36,6 +38,13 @@ const sortDirection = ref('desc');
 const showFilters = ref(false);
 const visible = ref(false);
 const selectedOrder = ref(null);
+
+const selectedStatus = ref(null); // Храним выбранный статус
+const popupRef = ref(null); // Ссылка на ConfirmPopup
+const actionType = ref(''); // Тип действия (удаление, изменение статуса, комментарий)
+const actionData = ref(null); // Данные для действия (например, статус или комментарий)
+const commentDialog = ref(null);
+
 
  // Открытие диалога
  const openOrderDialog = (event) => {
@@ -109,7 +118,7 @@ const viewOrder = (orderId) => {
 };
 
 
-const selectedProduct = ref();
+const selectedProduct = ref([]);
 
 const formatDateTime = (date) => {
   const options = { 
@@ -157,12 +166,116 @@ const totalAmount = (selectedOrder) => {
     return total + item.quantity * item.price;
   }, 0);
 };
+
+
+
+
+// Триггер для массового удаления
+const triggerMassDelete = (event) => {
+  if (!selectedProduct.value.length) {
+    toast.add({ severity: 'warn', summary: 'Ошибка', detail: 'Выберите хотя бы один заказ.', life: 3000, });
+    return;
+  }
+  confirm.require({
+    target: event.currentTarget,
+    message: "Ви дійсно хочете видалити вибрані замовлення?",
+    rejectProps: {
+      label: "Ні",
+      severity: "secondary",
+      outlined: true,
+    },
+    acceptProps: {
+      label: "Так",
+    },
+    accept: () => {
+      router.post('/orders/mass-delete', { order_ids: selectedProduct.value.map(o => o.id) }, {
+        onSuccess: () => {
+          toast.add({ severity: 'success', summary: 'Успіх!', detail: 'Замовлення успішно видалені!', life: 3000, });
+          loadOrders();
+        },
+        onError: () => {
+          toast.add({ severity: 'error', summary: 'Помилка', detail: 'Помилка...', life: 3000, });
+        },
+      });
+    },
+  });
+};
+
+// Триггер для массовой смены статуса
+const triggerMassUpdateStatus = (event) => {
+  if (!selectedProduct.value.length || !selectedStatus.value) {
+    toast.add({ severity: 'warn', summary: 'Ошибка', detail: 'Выберите заказы и статус.', life: 3000, });
+    return;
+  }
+  confirm.require({
+    target: event.currentTarget,
+    message: "Ви дійсно хочете оновити статус у вибраних замовленнях?",
+    rejectProps: {
+      label: "Ні",
+      severity: "secondary",
+      outlined: true,
+    },
+    acceptProps: {
+      label: "Так",
+    },
+    accept: () => {
+      router.post('/orders/mass-update-status', { 
+        order_ids: selectedProduct.value.map(o => o.id), 
+        status_id: selectedStatus.value
+      }, {
+        onSuccess: () => {
+          toast.add({ severity: 'success', summary: 'Успішно!', detail: 'Статуси оновлено.', life: 3000, });
+          selectedStatus.value = null;
+          loadOrders();
+        },
+        onError: () => {
+          toast.add({ severity: 'error', summary: 'Помилка', detail: 'Помилка...', life: 3000, });
+        },
+      });
+    },
+  });
+};
+
+// Триггер для массового изменения комментариев
+const triggerMassUpdateComment = (event, comment) => {
+  if (!selectedProduct.value.length) {
+    toast.add({ severity: 'warn', summary: 'Ошибка', detail: 'Выберите хотя бы один заказ.', life: 3000, });
+    return;
+  }
+  confirm.require({
+    target: event.currentTarget,
+    message: "Ви дійсно хочете оновити коментар у вибраних замовленнях?",
+    rejectProps: {
+      label: "Ні",
+      severity: "secondary",
+      outlined: true,
+    },
+    acceptProps: {
+      label: "Так",
+    },
+    accept: () => {
+      router.post('/orders/mass-update-comment', { 
+        order_ids: selectedProduct.value.map(o => o.id), 
+        comment 
+      }, {
+        onSuccess: () => {
+          toast.add({ severity: 'success', summary: 'Успіх!', detail: 'Коментар оновлено!', life: 3000, });
+          commentDialog.value = false;
+          loadOrders();
+        },
+        onError: () => {
+          commentDialog.value = false;
+          toast.add({ severity: 'error', summary: 'Помилка!', detail: 'Помилка...', life: 3000, });
+        },
+      });
+    },
+  });
+};
 </script>
 
 <template>
   <Head title="Замовлення" />
   <Layout>
-    
     <div class="w-full flex overflow-x-scroll overflow-y-hidden gap-3 align-start p-3 list-statuses bg-[#eee] rounded
     [&::-webkit-scrollbar]:h-2
   [&::-webkit-scrollbar-track]:bg-gray-100
@@ -237,6 +350,60 @@ const totalAmount = (selectedOrder) => {
      
       </div>
 
+
+      <div class="flex gap-3 my-4" v-if="selectedProduct[0]">
+          <!-- Кнопка для массового удаления -->
+          <Button 
+            label="Видалити" 
+            icon="pi pi-trash" 
+            severity="danger" 
+            class="p-button-rounded"
+            @click="triggerMassDelete($event)"
+          />
+
+          <!-- Выбор статуса -->
+          <Select 
+            v-model="selectedStatus" 
+            :options="statuses.map(s => ({ label: s.name, value: s.id }))" 
+            optionLabel="label" 
+            optionValue="value" 
+            placeholder="Оберіть статус" 
+            class="w-full md:w-56"
+          />
+
+          <!-- Кнопка для подтверждения изменения статуса -->
+          <Button 
+            label="Редагувати статус" 
+            severity="success" 
+            class="p-button-rounded"
+            @click="triggerMassUpdateStatus($event, selectedStatus)"
+          />
+
+          <!-- Кнопка для изменения комментариев -->
+          <Button 
+            label="Редагувати коментар" 
+            icon="pi pi-comment" 
+            severity="secondary" 
+            class="p-button-rounded"
+            @click="commentDialog = true" 
+          />
+
+        </div>
+
+      <Dialog v-model:visible="commentDialog" header="Редагувати коментар" modal>
+        <template #default>
+          <textarea v-model="actionData" rows="3" class="w-full border rounded p-2"></textarea>
+          <Button 
+            class="mt-4" 
+            label="Редагувати коментар" 
+            icon="pi pi-check" 
+            severity="success" 
+            @click="triggerMassUpdateComment($event, actionData)" 
+          />
+        </template>
+      </Dialog>
+
+
     <DataTable
   
       v-model:selection="selectedProduct" 
@@ -259,7 +426,7 @@ const totalAmount = (selectedOrder) => {
       :class="{ 'blur-sm pointer-events-none': isLoading }"
     >
     <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-      <Column field="id" header="ID" />
+      <Column field="id" header="ID" sortable  />
       <Column class="w-[40px]" header="Статус">
         <template #body="{ data }">
             <span v-if="data.status"
@@ -276,9 +443,9 @@ const totalAmount = (selectedOrder) => {
         </template>
       </Column>
 
-      <Column field="delivery_fullname" header="Контакт" />
-      <Column field="phone" header="Телефон" />
-      <Column field="email" header="Email" />
+      <Column field="delivery_fullname" header="Контакт" sortable  />
+      <Column field="phone" header="Телефон" sortable  />
+      <Column field="email" header="Email" sortable  />
       <Column field="comment" header="Коментар" />
       <Column  header="Товари">
         <template #body="{ data }">
@@ -315,7 +482,7 @@ const totalAmount = (selectedOrder) => {
 
       <Column field="responsible_user.name" header="Відповідальний"/>
 
-      <Column field="delivery_city" header="Місто" />
+      <Column field="delivery_city" header="Місто" sortable  />
       <Column field="delivery_address" header="Адреса" />
       <Column field="delivery_postcode" header="Зіп код" />
       
@@ -355,13 +522,13 @@ const totalAmount = (selectedOrder) => {
       <Column field="utm_content" header="utm_content" />
       <Column field="utm_term" header="utm_term" />
 
-      <Column header="created_at">
+      <Column header="created_at" sortable >
         <template #body="{ data }">
           {{ formatDateTime(data.created_at) }}
         </template>
       </Column>
 
-      <Column header="updated_at">
+      <Column header="updated_at" sortable >
         <template #body="{ data }">
           {{ formatDateTime(data.updated_at) }}
         </template>

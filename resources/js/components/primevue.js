@@ -37,7 +37,7 @@ import ToggleButton from 'primevue/togglebutton';
 import ContextMenu from 'primevue/contextmenu';
 
 import Checkbox from 'primevue/checkbox';
-
+import ConfirmDialog from 'primevue/confirmdialog';
 
 
 const Noir = definePreset(Aura, {
@@ -119,6 +119,7 @@ export function setupPrimeVue(app) {
     app.component('TabPanels', TabPanels);
     app.component('TabPanel', TabPanel);
 
+    app.component('ConfirmDialog', ConfirmDialog);
     app.component('ConfirmPopup', ConfirmPopup);
     app.component('MultiSelect', MultiSelect);
     app.component('Tag', Tag);
