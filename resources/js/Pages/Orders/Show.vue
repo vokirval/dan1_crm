@@ -4,7 +4,7 @@ import { usePage, Head, router } from "@inertiajs/vue3";
 import Layout from "../../Layout/App.vue";
 import { Button, InputText, Textarea } from "primevue";
 import { useToast } from "primevue/usetoast";
-import { Trash, Check, Pencil, MailPlus, Send } from "lucide-vue-next";
+import { Trash, Check, Pencil, MailPlus, Send, MapPinned, RefreshCcw } from "lucide-vue-next";
 import { useConfirm } from "primevue/useconfirm";
 
 const confirm = useConfirm();
@@ -490,6 +490,104 @@ const formatDateTime = (date) => {
   return new Date(date).toLocaleString('ru-RU', options);
 };
 
+const changeEmail = () => {
+  form.value.email = form.value.phone+'_client@daggi.shop';
+}
+
+const checkAddress = async () => {
+
+  if (
+    !form.value.delivery_address ||
+    !form.value.delivery_postcode ||
+    !form.value.delivery_city
+  ) {
+    toast.add({
+      severity: "warn",
+      summary: "Помилка",
+      detail: "Будь ласка, заповніть всі обов'язкові поля: адреса, поштовий індекс, місто.",
+      life: 9000,
+    });
+    return;
+  }
+
+
+  
+  // Проверяем, есть ли дробь в адресе и убираем её, если она есть
+  const cleanedAddress = form.value.delivery_address.includes("/")
+    ? form.value.delivery_address.split("/")[0].trim()
+    : form.value.delivery_address;
+
+  const url = `https://api.geoapify.com/v1/geocode/search?street=${encodeURIComponent(cleanedAddress)}&postcode=${encodeURIComponent(form.value.delivery_postcode)}&city=${encodeURIComponent(form.value.delivery_city)}&apiKey=cfb84a334cbb4ddabf3f0dce863d7e2c`;
+
+  try {
+    const response = await fetch(url);
+    const result = await response.json();
+
+    if (result.features.length === 0) {
+      toast.add({
+        severity: "error",
+        summary: "Помилка перевірки адреси",
+        detail: "Адресу не знайдено, перевірте правильність введених даних.",
+        life: 9000,
+      });
+      return;
+    }
+
+    let bestMatch = null;
+    let highestConfidence = 0;
+
+    // Поиск лучшего совпадения
+    result.features.forEach((feature) => {
+      const confidence = feature.properties.rank.confidence;
+      if (confidence > highestConfidence) {
+        highestConfidence = confidence;
+        bestMatch = feature;
+      }
+    });
+
+    if (!bestMatch) {
+      toast.add({
+        severity: "warn",
+        summary: "Адресу не підтверджено",
+        detail: "Не вдалося знайти відповідний запис у базі.",
+        life: 9000,
+      });
+      return;
+    }
+
+    // Отображение результата проверки
+    if (highestConfidence >= 0.95) {
+      toast.add({
+        severity: "success",
+        summary: "Адресу підтверджено",
+        detail: `Найдено точну відповідність: ${bestMatch.properties.formatted}`,
+        life: 9000,
+      });
+    } else if (highestConfidence >= 0.2) {
+      toast.add({
+        severity: "warn",
+        summary: "Адресу частково підтверджено",
+        detail: `Можливо, є неточності у даних: ${bestMatch.properties.formatted}`,
+        life: 9000,
+      });
+    } else {
+      toast.add({
+        severity: "error",
+        summary: "Адресу не підтверджено",
+        detail: "Низький рівень впевненості у введених даних.",
+        life: 9000,
+      });
+    }
+  } catch (error) {
+    toast.add({
+      severity: "error",
+      summary: "Помилка",
+      detail: "Сталася помилка під час перевірки адреси.",
+      life: 9000,
+    });
+  }
+};
+
 
 </script>
 
@@ -507,12 +605,16 @@ const formatDateTime = (date) => {
         <h3 class="font-bold text-lg mb-3">Замовлення #{{ order.id }}</h3>
 
         <div class="mb-4">
-          <label for="fullname">Имя</label>
+          <label for="fullname">Им`я</label>
           <InputText id="fullname" v-model="form.delivery_fullname" class="w-full" />
         </div>
-        <div class="mb-4">
-          <label for="address">Адрес</label>
-          <InputText id="address" v-model="form.delivery_address" class="w-full" />
+        <div class="mb-4 flex">
+          <div class="w-full">
+            <label for="address">Адреса</label>
+            <InputText id="address" v-model="form.delivery_address" class="w-full" />
+          </div>
+          <Button size="small" @click="checkAddress" class="mt-6 ml-2"><MapPinned class="w-6 h-6"/></Button>
+         
         </div>
         <div class="mb-4">
           <label for="address2">Додаткова адреса</label>
@@ -523,7 +625,7 @@ const formatDateTime = (date) => {
           <InputText id="zipcode" v-model="form.delivery_postcode" class="w-full" />
         </div>
         <div class="mb-4">
-          <label for="city">Город</label>
+          <label for="city">Місто</label>
           <InputText id="city" v-model="form.delivery_city" class="w-full" />
         </div>
         <div class="mb-4 grid grid-cols-2 gap-3">
@@ -536,13 +638,13 @@ const formatDateTime = (date) => {
               <label for="email">Email</label>
               <InputText id="email" v-model="form.email" class="w-full" />
             </div>
-           
+            <Button size="small" @click="changeEmail" v-if="!form.email" class="mt-6 ml-2"><RefreshCcw class="w-6 h-6"/></Button>
             <Button size="small" @click="emailDialogVisible = true" class="mt-6 ml-2"><MailPlus class="w-6 h-6"/></Button>
           </div>
           <p>IP Юзера: {{ order.ip }}</p>
         </div>
         <div class="mb-4">
-          <label for="comment">Комментарий</label>
+          <label for="comment">Коментар</label>
           <Textarea id="comment" v-model="form.comment" class="w-full" />
         </div>
         <IftaLabel class="mt-5">
