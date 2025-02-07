@@ -121,9 +121,7 @@ onMounted(() => {
 
 
 const viewOrder = (orderId) => {
-  console.log('lockedOrders:', Array.from(lockedOrders)); // Преобразуем в массив для удобства
-console.log('orderId:', orderId, typeof orderId); // Покажет, строка или число
-if (lockedOrders.value.has(orderId)) {
+  if (lockedOrders.value.has(orderId)) {
         alert('🚫 Це замовлення вже відкрито іншим менеджером!');
         return;
     }
@@ -132,14 +130,7 @@ if (lockedOrders.value.has(orderId)) {
 };
 
 
-const lockOrder = async (orderId) => {
-    try {
-        await axios.post(`/orders/${orderId}/lock`);
-        window.currentLockedOrder = orderId; // Сохраняем ID заблокированного заказа
-    } catch (error) {
-        alert(error.response.data.error);
-    }
-};
+
 
 const selectedProduct = ref([]);
 

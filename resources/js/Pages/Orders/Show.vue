@@ -6,6 +6,7 @@ import { Button, InputText, Textarea } from "primevue";
 import { useToast } from "primevue/usetoast";
 import { Trash, Check, Pencil, MailPlus, Send, MapPinned, RefreshCcw } from "lucide-vue-next";
 import { useConfirm } from "primevue/useconfirm";
+import { lockedOrders } from '../../ably'; // Импортируем список заблокированных заказов
 
 const confirm = useConfirm();
 const toast = useToast();
@@ -29,6 +30,18 @@ const isPaidAmountFocused = ref(false);
 const previewHtml = ref(""); // HTML для предпросмотра
 const previewDialogVisible = ref(false); // Видимость модального окна предпросмотра
 const macros = ref([]);
+
+const lockOrder = async (orderId) => {
+    try {
+        await axios.post(`/orders/${orderId}/lock`);
+        window.currentLockedOrder = orderId; // Сохраняем ID заблокированного заказа
+    } catch (error) {
+        alert(error.response.data.error);
+        router.get(`/orders/`);
+    }
+};
+
+lockOrder(order.value.id);
 
 watch(customSendEmailTemplate, (newValue) => {
   if (newValue) {
@@ -237,6 +250,7 @@ const updateOrder = () => {
 
   router.put(`/orders/${order.value.id}`, dataToSubmit, {
     onSuccess: () => {
+      discrepanciesList.value = [];
       toast.add({
         severity: "success",
         summary: "Успішно!",
@@ -494,6 +508,9 @@ const changeEmail = () => {
   form.value.email = form.value.phone+'_client@daggi.shop';
 }
 
+const discrepanciesList = ref([]); // Хранит список несоответствий
+
+
 const checkAddress = async () => {
 
   if (
@@ -555,26 +572,54 @@ const checkAddress = async () => {
       return;
     }
 
-    // Отображение результата проверки
-    if (highestConfidence >= 0.95) {
-      toast.add({
-        severity: "success",
-        summary: "Адресу підтверджено",
-        detail: `Найдено точну відповідність: ${bestMatch.properties.formatted}`,
-        life: 9000,
+    // Данные от сервиса
+    const apiAddress = (bestMatch.properties.street || "") + " " + (bestMatch.properties.housenumber || "");
+    const apiPostcode = bestMatch.properties.postcode || "";
+    const apiCity = bestMatch.properties.city || "";
+
+    // Данные, которые ввел пользователь
+    const userAddress = cleanedAddress;
+    const userPostcode = form.value.delivery_postcode.trim();
+    const userCity = form.value.delivery_city.trim();
+
+    // Список расхождений
+    if (apiAddress && userAddress.toLowerCase() !== apiAddress.toLowerCase()) {
+      discrepanciesList.value.push({
+        label: "Адреса",
+        userValue: userAddress,
+        apiValue: apiAddress,
       });
-    } else if (highestConfidence >= 0.2) {
+    }
+
+    if (apiPostcode && userPostcode !== apiPostcode) {
+      discrepanciesList.value.push({
+        label: "ЗІП код",
+        userValue: userPostcode,
+        apiValue: apiPostcode,
+      });
+    }
+
+    if (apiCity && userCity.toLowerCase() !== apiCity.toLowerCase()) {
+      discrepanciesList.value.push({
+        label: "Місто",
+        userValue: userCity,
+        apiValue: apiCity,
+      });
+    }
+
+    // Если расхождения есть - выводим их в отдельном блоке
+    if (discrepanciesList.value.length > 0) {
       toast.add({
         severity: "warn",
-        summary: "Адресу частково підтверджено",
-        detail: `Можливо, є неточності у даних: ${bestMatch.properties.formatted}`,
+        summary: "Є розбіжності в адресі",
+        detail: "Перевірте виправлення у формі нижче.",
         life: 9000,
       });
     } else {
       toast.add({
-        severity: "error",
-        summary: "Адресу не підтверджено",
-        detail: "Низький рівень впевненості у введених даних.",
+        severity: "success",
+        summary: "Адресу підтверджено",
+        detail: `Знайдено точну відповідність: ${bestMatch.properties.formatted}`,
         life: 9000,
       });
     }
@@ -603,6 +648,17 @@ const checkAddress = async () => {
     <div class="grid grid-cols-2 gap-4">
       <div>
         <h3 class="font-bold text-lg mb-3">Замовлення #{{ order.id }}</h3>
+
+        <div v-if="discrepanciesList.length" class="p-3 bg-yellow-100 border border-yellow-400 rounded mt-3">
+          <h4 class="font-bold text-yellow-900">Виявлено розбіжності:</h4>
+          <ul class="mt-2 text-yellow-900">
+            <li v-for="item in discrepanciesList" :key="item.label">
+              <strong>{{ item.label }}:</strong>
+              <span class="text-red-600"> ❌ {{ item.userValue }} </span>
+              <span class="text-green-600"> → ✅ {{ item.apiValue }}</span>
+            </li>
+          </ul>
+        </div>
 
         <div class="mb-4">
           <label for="fullname">Им`я</label>

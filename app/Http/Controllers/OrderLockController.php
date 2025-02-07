@@ -17,7 +17,7 @@ class OrderLockController extends Controller
         // Проверяем, не заблокирован ли уже заказ
         $existingLock = OrderLock::where('order_id', $orderId)->first();
         if ($existingLock) {
-            return response()->json(['error' => 'Заказ уже заблокирован другим пользователем'], 403);
+            return response()->json(['error' => 'Замовлення заблоковано! Хтось його вже редагує.'], 403);
         }
 
         // Создаем запись о блокировке

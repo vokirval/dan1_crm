@@ -282,6 +282,14 @@ class OrdersController extends Controller
     {
         $order = Order::findOrFail($id);
 
+        // Проверяем, заблокирован ли заказ в `order_locks` и другим ли пользователем
+        $existingLock = \DB::table('order_locks')->where('order_id', $id)->first();
+        if ($existingLock && $existingLock->user_id !== auth()->id()) {
+            return back()->withErrors([
+                'error' => 'Замовлення заблоковано! Хтось його вже редагує.',
+            ]);
+        }
+
         $validated = $request->validate([
             'order_status_id' => 'nullable|exists:order_statuses,id',
             'payment_method_id' => 'nullable|exists:payment_methods,id',
@@ -342,6 +350,15 @@ class OrdersController extends Controller
     public function destroy($id)
     {
         $order = Order::findOrFail($id);
+
+        $existingLock = \DB::table('order_locks')->where('order_id', $id)->first();
+        if ($existingLock && $existingLock->user_id !== auth()->id()) {
+            return back()->withErrors([
+                'error' => 'Замовлення заблоковано!',
+            ]);
+        }
+
+
         $order->delete();
 
         return back()->with('success', 'Order deleted successfully.');
@@ -353,6 +370,13 @@ class OrdersController extends Controller
     public function addOrderItems(Request $request, $orderId)
     {
         $order = Order::findOrFail($orderId);
+
+        $existingLock = \DB::table('order_locks')->where('order_id', $orderId)->first();
+        if ($existingLock && $existingLock->user_id !== auth()->id()) {
+            return back()->withErrors([
+                'error' => 'Замовлення заблоковано! Хтось його вже редагує.',
+            ]);
+        }
 
         $validatedItems = $request->validate([
             'product_id' => 'nullable|exists:products,id',
@@ -385,6 +409,15 @@ class OrdersController extends Controller
     public function updateOrderItem(Request $request, $orderId, $itemId)
     {
         $order = Order::findOrFail($orderId);
+
+        $existingLock = \DB::table('order_locks')->where('order_id', $orderId)->first();
+        if ($existingLock && $existingLock->user_id !== auth()->id()) {
+            return back()->withErrors([
+                'error' => 'Замовлення заблоковано! Хтось його вже редагує.',
+            ]);
+        }
+
+
         $item = $order->items()->findOrFail($itemId);
 
         $validated = $request->validate([
@@ -420,6 +453,15 @@ class OrdersController extends Controller
     public function removeOrderItem($orderId, $itemId)
     {
         $order = Order::findOrFail($orderId);
+
+        $existingLock = \DB::table('order_locks')->where('order_id', $orderId)->first();
+        if ($existingLock && $existingLock->user_id !== auth()->id()) {
+            return back()->withErrors([
+                'error' => 'Замовлення заблоковано! Хтось його вже редагує.',
+            ]);
+        }
+
+        
         $orderItem = $order->items()->findOrFail($itemId);
 
         $orderItem->delete();
