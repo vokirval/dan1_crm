@@ -87,6 +87,7 @@ const loadOrders = () => {
     {
       preserveState: true,
       onSuccess: (page) => {
+        fetchLockedOrdersInIndex();
         orders.value = page.props.data;
       },
       onFinish: () => {
@@ -108,6 +109,7 @@ const resetFilters = () => {
 };
 
 onMounted(() => {
+  fetchLockedOrdersInIndex();
   filters.value = {
     id: inertiaProps.filters.id || "",
     delivery_fullname: inertiaProps.filters.delivery_fullname || "",
@@ -288,6 +290,21 @@ const rowClass = (data) => {
   return lockedOrders.value.has(data.id) ? 'locked-row' : ''; // Если заказ заблокирован, применяем стиль
 };
 
+
+const fetchLockedOrdersInIndex = async () => {
+    try {
+        lockedOrders.value = new Set();
+        const response = await axios.get('/orders/locked');
+        response.data.lockedOrders.forEach(orderId => addLockedOrder(orderId));
+        console.log(lockedOrders.value);
+    } catch (error) {
+        console.error('Ошибка загрузки заблокированных заказов:', error);
+    }
+};
+
+const addLockedOrder = (orderId) => {
+    lockedOrders.value = new Set([...lockedOrders.value, orderId]); // Создаем новый Set
+};
 </script>
 
 <template>
