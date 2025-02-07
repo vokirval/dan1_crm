@@ -512,7 +512,7 @@ const discrepanciesList = ref([]); // Хранит список несоотве
 
 
 const checkAddress = async () => {
-
+  discrepanciesList.value = [];
   if (
     !form.value.delivery_address ||
     !form.value.delivery_postcode ||
@@ -572,6 +572,16 @@ const checkAddress = async () => {
       return;
     }
 
+    if (!bestMatch.properties.street) {
+      toast.add({
+        severity: "warn",
+        summary: "Адресу не підтверджено",
+        detail: "Не вдалося знайти відповідний запис у базі.",
+        life: 9000,
+      });
+      return;
+    }
+
     // Данные от сервиса
     const apiAddress = (bestMatch.properties.street || "") + " " + (bestMatch.properties.housenumber || "");
     const apiPostcode = bestMatch.properties.postcode || "";
@@ -609,6 +619,14 @@ const checkAddress = async () => {
 
     // Если расхождения есть - выводим их в отдельном блоке
     if (discrepanciesList.value.length > 0) {
+
+      discrepanciesList.value.push({
+        label: "Ймовірна адреса",
+        userValue: '',
+        apiValue: bestMatch.properties.formatted,
+      });
+
+
       toast.add({
         severity: "warn",
         summary: "Є розбіжності в адресі",
@@ -620,7 +638,7 @@ const checkAddress = async () => {
         severity: "success",
         summary: "Адресу підтверджено",
         detail: `Знайдено точну відповідність: ${bestMatch.properties.formatted}`,
-        life: 9000,
+        life: 40000,
       });
     }
   } catch (error) {
@@ -654,8 +672,8 @@ const checkAddress = async () => {
           <ul class="mt-2 text-yellow-900">
             <li v-for="item in discrepanciesList" :key="item.label">
               <strong>{{ item.label }}:</strong>
-              <span class="text-red-600"> ❌ {{ item.userValue }} </span>
-              <span class="text-green-600"> → ✅ {{ item.apiValue }}</span>
+              <span class="text-red-600" v-if="item.userValue"> ❌ {{ item.userValue }} </span>
+              <span class="text-green-600" v-if="item.apiValue"> → ✅ {{ item.apiValue }}</span>
             </li>
           </ul>
         </div>
