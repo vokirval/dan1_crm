@@ -125,7 +125,6 @@ const viewOrder = (orderId) => {
         alert('🚫 Це замовлення вже відкрито іншим менеджером!');
         return;
     }
-    lockOrder(orderId);
     router.get(`/orders/${orderId}`);
 };
 
