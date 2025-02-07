@@ -6,6 +6,12 @@ import { DataTable, Column, Button } from 'primevue';
 import { useToast } from 'primevue/usetoast';
 import { Plus, Pencil, Filter, FilterX, Search, RefreshCcw } from 'lucide-vue-next';
 import { useConfirm } from "primevue/useconfirm";
+import { lockedOrders } from '../../ably'; // Импортируем список заблокированных заказов
+
+axios.defaults.withCredentials = true;
+
+
+
 
 const page = usePage();
 const toast = useToast();
@@ -111,12 +117,29 @@ onMounted(() => {
   };
 });
 
+
+
+
 const viewOrder = (orderId) => {
-  router.get(`/orders/${orderId}`, {}, {
-   
-  });
+  console.log('lockedOrders:', Array.from(lockedOrders)); // Преобразуем в массив для удобства
+console.log('orderId:', orderId, typeof orderId); // Покажет, строка или число
+if (lockedOrders.value.has(orderId)) {
+        alert('🚫 Це замовлення вже відкрито іншим менеджером!');
+        return;
+    }
+    lockOrder(orderId);
+    router.get(`/orders/${orderId}`);
 };
 
+
+const lockOrder = async (orderId) => {
+    try {
+        await axios.post(`/orders/${orderId}/lock`);
+        window.currentLockedOrder = orderId; // Сохраняем ID заблокированного заказа
+    } catch (error) {
+        alert(error.response.data.error);
+    }
+};
 
 const selectedProduct = ref([]);
 
@@ -271,6 +294,10 @@ const triggerMassUpdateComment = (event, comment) => {
     },
   });
 };
+const rowClass = (data) => {
+  return lockedOrders.value.has(data.id) ? 'locked-row' : ''; // Если заказ заблокирован, применяем стиль
+};
+
 </script>
 
 <template>
@@ -424,6 +451,7 @@ const triggerMassUpdateComment = (event, comment) => {
       @row-dblclick="openOrderDialog"
       size="small"
       :class="{ 'blur-sm pointer-events-none': isLoading }"
+      :rowClass="rowClass"
     >
     <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
       <Column field="id" header="ID" sortable  />
@@ -698,5 +726,9 @@ const triggerMassUpdateComment = (event, comment) => {
 <style>
 tbody {
   white-space: nowrap;
+}
+.locked-row {
+  opacity: 0.5; /* Затемнение */
+  pointer-events: none; /* Отключение кликов */
 }
 </style>

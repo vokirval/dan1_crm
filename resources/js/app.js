@@ -3,6 +3,8 @@ import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 import { setupPrimeVue } from './components/primevue'; // Импорт PrimeVue настройки
 import '../css/app.css';
+import './ably'; // Глобально подключаем Ably
+
 
 createInertiaApp({
   resolve: name => {
@@ -18,3 +20,5 @@ createInertiaApp({
     app.mount(el); // Монтируем приложение
   },
 });
+
+

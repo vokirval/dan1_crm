@@ -1,21 +1,21 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\EmailController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\OrderLockController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\OrderStatusController;
-use App\Http\Controllers\PaymentMethodController;
-use App\Http\Controllers\DeliveryMethodController;
-use App\Http\Controllers\ProductsCategoryController;
 use App\Http\Controllers\EmailTemplateController;
-use App\Http\Controllers\EmailController;
+use App\Http\Controllers\PaymentMethodController;
 
 //php artisan migrate
 //php artisan db:seed --class=DatabaseSeeder
@@ -31,7 +31,8 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/signup', [AuthController::class, 'signup'])->name('signup');
 Route::post('/signup', [AuthController::class, 'storeSignup'])->name('store-signup');
 
-use App\Models\User;
+use App\Http\Controllers\DeliveryMethodController;
+use App\Http\Controllers\ProductsCategoryController;
 
 
 Route::get('/generate-token', function () {
@@ -52,6 +53,13 @@ Route::get('/generate-token', function () {
 
 
 Route::middleware(['auth'])->group(function() {
+
+    Route::post('/orders/{order}/lock', [OrderLockController::class, 'lock']);
+    Route::post('/orders/{order}/unlock', [OrderLockController::class, 'unlock']);
+    Route::post('/orders/{order}/heartbeat', [OrderLockController::class, 'heartbeat']);
+    Route::get('/orders/locked', [OrderLockController::class, 'getLockedOrders']);
+
+    
     Route::get('/dashboard', [DashboardController::class, 'index']);
     
     Route::prefix('/products')->group(function(){
