@@ -26,6 +26,8 @@ const selectedTemplateId = ref(null); // Выбранный шаблон
 const customSubject = ref(""); // Пользовательская тема
 const customBody = ref(""); // Пользовательское тело письма
 const emailDialogVisible = ref(false); // Управление видимостью диалога
+const showBodyEmail = ref(false); // Управление видимостью диалога
+const bodyEmail = ref(""); // Управление видимостью диалога
 const isPaidAmountFocused = ref(false);
 const previewHtml = ref(""); // HTML для предпросмотра
 const previewDialogVisible = ref(false); // Видимость модального окна предпросмотра
@@ -947,6 +949,7 @@ const checkAddress = async () => {
             <th class="border border-gray-300 p-2">Email</th>
             <th class="border border-gray-300 p-2">Тема</th>
             <th class="border border-gray-300 p-2">Помилка</th>
+            <th class="border border-gray-300 p-2">Лист</th>
           </tr>
         </thead>
         <tbody>
@@ -959,6 +962,8 @@ const checkAddress = async () => {
             <td class="border border-gray-300 p-2">{{ email.to_email }}</td>
             <td class="border border-gray-300 p-2">{{ email.subject }}</td>
             <td class="border border-gray-300 p-2">{{ email.error_message || '-' }}</td>
+            <td class="border border-gray-300 p-2"><Button label="Показати лист" @click="bodyEmail = email.body; showBodyEmail = true" /></td>
+            
           </tr>
         </tbody>
       </table>
@@ -1229,6 +1234,7 @@ const checkAddress = async () => {
   <Dialog
   v-model:visible="emailDialogVisible"
   header="Відправка Email"
+  modal
   :style="{ width: '50vw' }"
   :breakpoints="{ '960px': '75vw', '640px': '90vw' }"
 >
@@ -1292,6 +1298,12 @@ const checkAddress = async () => {
   <template #footer>
     <Button class="p-button-success" @click="sendEmail"><Send /> Відправити</Button>
   </template>
+</Dialog>
+
+
+<Dialog v-model:visible="showBodyEmail" maximizable modal header="Тіло листа" :style="{ width: '50rem' }" :breakpoints="{ '1199px': '75vw', '575px': '90vw' }">
+    <p class="m-0" v-html="bodyEmail">
+    </p>
 </Dialog>
 
 
