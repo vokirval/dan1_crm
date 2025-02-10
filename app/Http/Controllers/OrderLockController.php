@@ -16,7 +16,15 @@ class OrderLockController extends Controller
 
         // Проверяем, не заблокирован ли уже заказ
         $existingLock = OrderLock::where('order_id', $orderId)->first();
+
         if ($existingLock) {
+            // Если заказ уже заблокирован этим пользователем, обновляем время активности и разрешаем доступ
+            if ($existingLock->user_id === $userId) {
+                $existingLock->update(['last_heartbeat' => Carbon::now()]);
+                return response()->json(['message' => 'Вы продолжаете редактирование заказа']);
+            }
+
+            // Если заказ заблокирован другим пользователем — отказываем в доступе
             return response()->json(['error' => 'Замовлення заблоковано! Хтось його вже редагує.'], 403);
         }
 
