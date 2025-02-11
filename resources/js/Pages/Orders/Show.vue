@@ -110,21 +110,12 @@ const previewTemplate = async () => {
   }
 
   try {
-    const response = await fetch(`/orders/${order.value.id}/preview-template`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
-      },
-      body: JSON.stringify({
-        template_id: selectedTemplateId.value,
-      }),
+    const response = await axios.post(`/orders/${order.value.id}/preview-template`, {
+      template_id: selectedTemplateId.value,
     });
 
-    const data = await response.json();
-
-    if (data.success) {
-      previewHtml.value = data.preview; // HTML для отображения предпросмотра
+    if (response.data.success) {
+      previewHtml.value = response.data.preview; // HTML для отображения предпросмотра
       previewDialogVisible.value = true; // Открываем модальное окно
     } else {
       throw new Error("Ошибка получения предпросмотра.");
@@ -133,10 +124,11 @@ const previewTemplate = async () => {
     toast.add({
       severity: "error",
       summary: "Ошибка",
-      detail: error.message,
+      detail: error.response?.data?.message || error.message,
       life: 5000,
     });
   }
+
 };
 
 const sendEmail = async () => {
@@ -332,44 +324,29 @@ const addProductToOrder = async () => {
   };
 
   try {
-    const response = await fetch(`/orders/${order.value.id}/items`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        'X-Requested-With': 'XMLHttpRequest', // Указывает, что это AJAX-запрос
-        "X-CSRF-TOKEN": document
-          .querySelector('meta[name="csrf-token"]')
-          .getAttribute("content"),
-      },
-      body: JSON.stringify(itemToAdd),
-    });
-
-    if (!response.ok) {
-      throw new Error("Ошибка сети");
-    }
-
-    const data = await response.json();
+    const response = await axios.post(`/orders/${order.value.id}/items`, itemToAdd);
 
     // Обновляем данные заказа
-    order.value = data.order;
+    order.value = response.data.order;
 
     toast.add({
-      severity: "success",
-      summary: "Успешно",
-      detail: data.flash.success,
-      life: 3000,
+        severity: "success",
+        summary: "Успешно",
+        detail: response.data.flash.success,
+        life: 3000,
     });
 
     selectedProduct.value = null;
     selectedVariation.value = null;
-  } catch (error) {
+} catch (error) {
     toast.add({
-      severity: "error",
-      summary: "Ошибка",
-      detail: error.message,
-      life: 5000,
+        severity: "error",
+        summary: "Ошибка",
+        detail: error.response?.data?.message || error.message,
+        life: 5000,
     });
-  }
+}
+
 };
 
 const removeOrderItem = (event, orderId, itemId) => {
