@@ -770,8 +770,7 @@ const checkTrackingNumber = () => {
           detail: `Трекінг номер: ${response.data.tracking_number}`,
           life: 5000,
         });
-        router.get(`/orders/${order.value.id}`, {}, { preserveState: false });
-
+        router.reload({ preserveState: false });
 
       }
     } catch (error) {
