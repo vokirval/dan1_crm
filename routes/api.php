@@ -24,11 +24,11 @@ Route::post('/inpost-webhook', function (Request $request) {
             'inpost_status' => 'nullable|string',
         ]);
 
-        // Ищем заказ по external_id (InPost ID)
-        $order = Order::where('inpost_id', $webhookData['external_id'])->first();
+        // Ищем заказ по inpost_id (InPost ID)
+        $order = Order::where('inpost_id', $webhookData['inpost_id'])->first();
 
         if (!$order) {
-            Log::warning('Order not found for InPost ID.', ['external_id' => $webhookData['external_id']]);
+            Log::warning('Order not found for InPost ID.', ['inpost_id' => $webhookData['inpost_id']]);
             return response()->json([
                 'message' => 'Order not found.',
             ], 404);
