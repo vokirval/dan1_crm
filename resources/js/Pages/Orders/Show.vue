@@ -770,7 +770,8 @@ const checkTrackingNumber = () => {
           detail: `Трекінг номер: ${response.data.tracking_number}`,
           life: 5000,
         });
-        router.reload();
+        router.reload({ preserveState: false });
+
       }
     } catch (error) {
       console.log("Очікуємо ТТН...");
