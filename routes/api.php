@@ -18,7 +18,7 @@ Route::post('/inpost-webhook', function (Request $request) {
     try {
         // Получаем данные из вебхука
         $webhookData = $request->validate([
-            'external_id' => 'required|string',
+            'inpost_id' => 'required|string',
             'tracking_number' => 'nullable|string',
             'return_tracking_number' => 'nullable|string',
             'inpost_status' => 'nullable|string',
