@@ -96,6 +96,8 @@ Route::middleware(['auth'])->group(function() {
         Route::post('/{id}/items', [OrdersController::class, 'addOrderItems'])->name('orders.add_items')->middleware('permission:Створення замовлень');
         Route::put('/{orderId}/items/{itemId}', [OrdersController::class, 'updateOrderItem'])->name('orders.items.update')->middleware('permission:Редагування замовлень');
         Route::delete('/{orderId}/items/{itemId}', [OrdersController::class, 'removeOrderItem'])->name('orders.items.destroy')->middleware('permission:Видалення замовлень');
+        
+        Route::post('/{id}/create-inpost', [OrdersController::class, 'createInpostOrder'])->name('orders.createInpost');
 
 
     });

@@ -48,6 +48,10 @@ class Order extends Model
         'tracking_number', // Добавлено
         'is_paid',         // Добавлено
         'paid_amount',     // Добавлено
+        'inpost_id', 
+        'inpost_status', 
+        'return_tracking_number',
+        'delivery_address_number'
     ];
 
     public function status()

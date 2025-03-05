@@ -32,6 +32,10 @@ const isPaidAmountFocused = ref(false);
 const previewHtml = ref(""); // HTML для предпросмотра
 const previewDialogVisible = ref(false); // Видимость модального окна предпросмотра
 const macros = ref([]);
+const inpostModalVisible = ref(false);
+const errorMessages = ref([]);
+const loadingInpost = ref(false);
+let trackingCheckInterval = null;
 
 const lockOrder = async (orderId) => {
     try {
@@ -243,7 +247,8 @@ const updateOrder = () => {
 
 
   router.put(`/orders/${order.value.id}`, dataToSubmit, {
-    onSuccess: () => {
+    onSuccess: (page) => {
+      order.value = page.props.order;
       discrepanciesList.value = [];
       toast.add({
         severity: "success",
@@ -631,9 +636,182 @@ const checkAddress = async () => {
 };
 
 
+const splitFullName = (fullName) => {
+  if (!fullName) return { firstName: "", lastName: "" };
+  const parts = fullName.trim().split(" ");
+  return {
+    firstName: parts[0] || "",
+    lastName: parts.slice(1).join(" ") || "-",
+  };
+};
+
+const { firstName, lastName } = splitFullName(order.value.delivery_fullname);
+
+const inpostData = ref({});
+
+
+const openInpostModal = () => {
+  inpostData.value = {
+  sender: {
+    company_name: "Daggi sp. z o.o.",
+    first_name: "Danylo",
+    last_name: "Dyakiv",
+    email: "paczki@daggi.shop",
+    phone: "516146453",
+    address: {
+      street: "Sokołowska",
+      building_number: "10",
+      city: "Wypędy",
+      post_code: "05-090",
+      country_code: "PL"
+    }
+  },
+  receiver: {
+    first_name: firstName,
+    last_name: lastName,
+    email: order.value.email || "",
+    phone: order.value.phone || "",
+    address: {
+      street: order.value.delivery_address || "",
+      building_number: order.value.delivery_address_number || "",
+      city: order.value.delivery_city || "",
+      post_code: order.value.delivery_postcode || "",
+      country_code: "PL"
+    }
+  },
+  parcels: [
+    {
+      id: "small_package",
+      dimensions: {
+        length: 400,
+        width: 300,
+        height: 80,
+        unit: "mm"
+      },
+      weight: {
+        amount: 1,
+        unit: "kg"
+      }
+    }
+  ],
+  insurance: {
+    amount: totalAmount(order.value.items) || 0,
+    currency: "PLN"
+  },
+  cod: {
+    amount: order.value.is_paid ? 0 : totalAmount(order.value.items) || 0,
+    currency: "PLN"
+  },
+  service: "inpost_courier_standard",
+  reference: order.value.id,
+  comments: "Коментар до замовлення"
+}
+  inpostModalVisible.value = true;
+};
+
+const validatePhone = (phone) => {
+  const regex = /^\d{9}$/; // Только 9 цифр
+  return regex.test(phone);
+};
+
+
+
+const sendToInpost = async () => {
+  errorMessages.value = []; // Очищаем ошибки перед запросом
+  if (!validatePhone(inpostData.value.receiver.phone)) {
+    errorMessages.value.push("❌ Невірний номер телефону одержувача, повинно бути 9 цифр.");
+    inpostModalVisible.value = false;
+    return; // ❌ НЕ ОТПРАВЛЯЕМ, если номер неверный
+  }
+  try {
+    const response = await axios.post(`/orders/${order.value.id}/create-inpost`, inpostData.value);
+
+    if (response.data.success) {
+      toast.add({
+        severity: "success",
+        summary: "Успішно",
+        detail: "Замовлення успішно створено в InPost",
+        life: 3000
+      });
+
+      checkTrackingNumber(); // Запускаем проверку трек-номера
+
+      
+    }
+  } catch (error) {
+    if (error.response?.data?.details) {
+      errorMessages.value = formatErrors(error.response.data.details);
+    } else {
+      errorMessages.value.push(error.response?.data?.message || "Невідома помилка");
+    }
+    inpostModalVisible.value = false;
+    toast.add({
+      severity: "error",
+      summary: "Помилка",
+      detail: "Помилка при створенні замовлення в InPost. Дивіться деталі.",
+      life: 5000
+    });
+  }
+};
+
+// 🔥 **Функция проверки наличия ТТН в БД**
+const checkTrackingNumber = () => {
+  loadingInpost.value = true;
+  trackingCheckInterval = setInterval(async () => {
+    try {
+      const response = await axios.get(`/api/orders/${order.value.id}/check-tracking`);
+      if (response.data.tracking_number) {
+        clearInterval(trackingCheckInterval);
+        loadingInpost.value = false; // Разблокируем сайт
+        inpostModalVisible.value = false;
+        toast.add({
+          severity: "success",
+          summary: "ТТН отримано",
+          detail: `Трекінг номер: ${response.data.tracking_number}`,
+          life: 5000,
+        });
+        router.reload();
+      }
+    } catch (error) {
+      console.log("Очікуємо ТТН...");
+    }
+  }, 5000);
+};
+
+const formatErrors = (errors, prefix = "") => {
+  let messages = [];
+
+  Object.entries(errors).forEach(([key, value]) => {
+    const fieldName = prefix ? `${prefix} → ${key}` : key;
+
+    if (Array.isArray(value) && typeof value[0] === "string") {
+      // Простой массив ошибок, например: "phone": ["invalid"]
+      messages.push(`${fieldName}: ${value.join(", ")}`);
+    } else if (Array.isArray(value)) {
+      // Вложенные объекты (например, "receiver": [{ "phone": ["invalid"] }])
+      value.forEach((item) => {
+        messages = messages.concat(formatErrors(item, fieldName));
+      });
+    } else if (typeof value === "object") {
+      // Ошибка-объект
+      messages = messages.concat(formatErrors(value, fieldName));
+    }
+  });
+
+  return messages;
+};
+
+
 </script>
 
 <template>
+
+<div v-if="loadingInpost" class="overlay">
+    <div class="overlay-content">
+      <div class="spinner"></div>
+      <p>Чекаємо створення ТТН...</p>
+    </div>
+  </div>
 
   <Head title="Просмотр заказа" />
   <Layout>
@@ -642,9 +820,16 @@ const checkAddress = async () => {
             <div class="font-bold inline-flex gap-1 items-center">🔥 Увага! Є дублікати! 🔥 <Button label="Показати" severity="secondary" @click="dialogVisible = true" /></div>
         </div>
     </div>
+    <!-- 🔥 Выводим ошибки ЧИТАБЕЛЬНО 🔥 -->
+    <div v-if="errorMessages.length" class="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+      <h4 class="font-bold">Помилки:</h4>
+      <ul>
+        <li v-for="(error, index) in errorMessages" :key="index">⚠️ {{ error }}</li>
+      </ul>
+    </div>
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <h3 class="font-bold text-lg mb-3">Замовлення #{{ order.id }}</h3>
+        <h3 class="font-bold text-lg mb-3">Замовлення #{{ order.id }} <span v-if="order.inpost_id">| inpost #{{ order.inpost_id }}</span></h3>
 
         <div v-if="discrepanciesList.length" class="p-3 bg-yellow-100 border border-yellow-400 rounded mt-3">
           <h4 class="font-bold text-yellow-900">Виявлено розбіжності:</h4>
@@ -717,6 +902,8 @@ const checkAddress = async () => {
       </div>
 
       <div>
+        <Button label="Створити замовлення в InPost" v-if="!order.inpost_id" @click="openInpostModal" />
+
         <h3 class="font-bold text-lg mb-3">Доп. налаштування</h3>
         <IftaLabel class="mt-5">
           <Select v-model="form.order_status_id" optionValue="id" :options="statuses" optionLabel="name"
@@ -944,6 +1131,8 @@ const checkAddress = async () => {
           </tr>
         </tbody>
       </table>
+
+
 
     
 
@@ -1285,5 +1474,138 @@ const checkAddress = async () => {
 
 
 
+<Dialog v-model:visible="inpostModalVisible" header="Створення замовлення в InPost" modal>
+    
+  <div class="grid grid-cols-3 gap-4">
+    <!-- Відправник -->
+    <div>
+      <h3 class="font-bold mb-2 mt-3">Відправник</h3>
+      <label>Назва компанії</label>
+      <InputText v-model="inpostData.sender.company_name" class="w-full" />
+
+      <label>Ім'я</label>
+      <InputText v-model="inpostData.sender.first_name" class="w-full" />
+
+      <label>Email</label>
+      <InputText v-model="inpostData.sender.email" class="w-full" />
+
+      <label>Телефон</label>
+      <InputText v-model="inpostData.sender.phone" class="w-full" />
+    </div>
+
+    <!-- Одержувач -->
+    <div>
+      <h3 class="font-bold mb-2 mt-3">Одержувач</h3>
+      <label>Ім'я</label>
+      <InputText v-model="inpostData.receiver.first_name" class="w-full" />
+
+      <label>Прізвище</label>
+      <InputText v-model="inpostData.receiver.last_name" class="w-full" />
+
+      <label>Email</label>
+      <InputText v-model="inpostData.receiver.email" class="w-full" />
+
+      <label>Телефон</label>
+      <InputText v-model="inpostData.receiver.phone" class="w-full" />
+    </div>
+
+    <!-- Адреса -->
+    <div>
+      <h3 class="font-bold mb-2 mt-3">Адреса</h3>
+      <label>Вулиця</label>
+      <InputText v-model="inpostData.receiver.address.street" class="w-full" />
+
+      <label>Номер будинку</label>
+      <InputText v-model="inpostData.receiver.address.building_number" class="w-full" />
+
+      <label>Місто</label>
+      <InputText v-model="inpostData.receiver.address.city" class="w-full" />
+
+      <label>Поштовий індекс</label>
+      <InputText v-model="inpostData.receiver.address.post_code" class="w-full" />
+    </div>
+
+    <!-- Деталі посилки -->
+    <div>
+      <h3 class="font-bold mb-2 mt-3">Деталі посилки</h3>
+      <label>Вага (кг)</label>
+      <InputText v-model="inpostData.parcels[0].weight.amount" class="w-full" />
+
+      <label>Довжина (мм)</label>
+      <InputText v-model="inpostData.parcels[0].dimensions.length" class="w-full" />
+
+      <label>Ширина (мм)</label>
+      <InputText v-model="inpostData.parcels[0].dimensions.width" class="w-full" />
+
+      <label>Висота (мм)</label>
+      <InputText v-model="inpostData.parcels[0].dimensions.height" class="w-full" />
+    </div>
+
+    <!-- Фінансові умови -->
+    <div>
+      <h3 class="font-bold mb-2 mt-3">Фінансові умови</h3>
+      <label>Сума страховки (PLN)</label>
+      <InputText v-model="inpostData.insurance.amount" class="w-full" />
+
+      <label>Сума післяплати (PLN)</label>
+      <InputText v-model="inpostData.cod.amount" class="w-full" :disabled="order.is_paid === 1" />
+    </div>
+
+    <!-- Додаткові дані -->
+    <div>
+      <h3 class="font-bold mb-2 mt-3">Додаткові дані</h3>
+      <label>Референс</label>
+      <InputText v-model="inpostData.reference" class="w-full" />
+
+      <label>Коментар</label>
+      <Textarea v-model="inpostData.comments" rows="3" class="w-full" />
+
+      <Button label="Відправити" @click="sendToInpost" class="mt-4" />
+    </div>
+  </div>
+</Dialog>
+
+
+
+
+
   </Layout>
 </template>
+<style scoped>
+/* Оверлей блокировки экрана */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* Контент оверлея */
+.overlay-content {
+  text-align: center;
+  color: white;
+  font-size: 1.5rem;
+}
+
+/* Анимация загрузки */
+.spinner {
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-top: 5px solid white;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>

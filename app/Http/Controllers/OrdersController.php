@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use App\Models\EmailTemplate;
 use App\Models\PaymentMethod;
 use App\Models\DeliveryMethod;
+use Illuminate\Support\Facades\Http;
 
 
 class OrdersController extends Controller
@@ -143,6 +144,7 @@ class OrdersController extends Controller
             'delivery_price' => 'nullable|numeric|min:0',
             'delivery_fullname' => 'nullable|string|max:255',
             'delivery_address' => 'nullable|string|max:255',
+            'delivery_address_number' => 'nullable|string|max:255',
             'delivery_second_address' => 'nullable|string|max:255',
             'delivery_postcode' => 'nullable|string|max:20',
             'delivery_city' => 'nullable|string|max:100',
@@ -300,6 +302,7 @@ class OrdersController extends Controller
             'delivery_fullname' => 'nullable|string|max:255',
             'delivery_address' => 'nullable|string|max:255',
             'delivery_second_address' => 'nullable|string|max:255',
+            'delivery_address_number' => 'nullable|string|max:255',
             'delivery_postcode' => 'nullable|string|max:20',
             'delivery_city' => 'nullable|string|max:100',
             'delivery_state' => 'nullable|string|max:100',
@@ -535,6 +538,49 @@ class OrdersController extends Controller
 
         return back()->with('success', 'Коментар успішно оновлено!');
     }
+
+
+    public function createInpostOrder(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+
+        // Берём данные с фронта
+        $data = $request->all();
+
+    
+     
+        try {
+            $response = Http::post('http://nihao.uno/testerr/create-inpost-order.php', $data);
+            $responseData = $response->json();
+
+            // Проверяем, есть ли ошибки
+            if (!$responseData['success']) {
+                return response()->json([
+                    'success' => false,
+                    'status' => $responseData['status'] ?? 400,
+                    'error' => $responseData['error'] ?? 'unknown_error',
+                    'message' => $responseData['message'] ?? 'Unknown error occurred',
+                    'details' => $responseData['details'] ?? []
+                ], 400);
+            }
+
+            // Сохраняем inpost_id в заказе
+            $order->update(['inpost_id' => $responseData['id']]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Заказ успешно создан в InPost',
+                'inpost_id' => $responseData['id']
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка отправки в InPost: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 
 
 }
