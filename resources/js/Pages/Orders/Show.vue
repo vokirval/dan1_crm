@@ -741,8 +741,8 @@ const openInpostModal = () => {
         "email", "sms"
   ],
   service: "inpost_courier_standard",
-  reference: referenceParts.join(";"), // Устанавливаем reference
-  comments: order.value.comment+' | '+commentParts.join(";"), // Устанавливаем comment
+  reference: order.value.id+'|'+referenceParts.join(";"), // Устанавливаем reference
+  comments: order.value.comment+'|'+commentParts.join(";"), // Устанавливаем comment
 }
   inpostModalVisible.value = true;
 };
