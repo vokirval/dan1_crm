@@ -15,6 +15,7 @@ import {
     PackagePlus,
     FileBox,
     FolderSync,
+    Truck
 } from "lucide-vue-next";
 import { useConfirm } from "primevue/useconfirm";
 import { lockedOrders } from "../../ably"; // Импортируем список заблокированных заказов
@@ -73,15 +74,11 @@ const setTotalAmountToPaidInput = () => {
 
 const fetchMacros = async () => {
     try {
-        const response = await fetch("/email/macros", {
-            headers: {
-                "X-CSRF-TOKEN": document
-                    .querySelector('meta[name="csrf-token"]')
-                    .getAttribute("content"),
-            },
-        });
-        const data = await response.json();
-        macros.value = Object.entries(data).map(([key, description]) => ({
+        const response = await axios.get(
+            `/email/macros`
+        );
+
+        macros.value = Object.entries(response.data).map(([key, description]) => ({
             key,
             description,
         }));
@@ -163,33 +160,28 @@ const sendEmail = async () => {
     }
 
     try {
-        const response = await fetch(`/orders/${order.value.id}/send-email`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-TOKEN": document
-                    .querySelector('meta[name="csrf-token"]')
-                    .getAttribute("content"),
-            },
-            body: JSON.stringify({
+
+        const response = await axios.post(
+            `/orders/${order.value.id}/send-email`,
+            {
                 template_id: selectedTemplateId.value,
                 custom_subject: customSubject.value,
                 custom_body: customBody.value,
-            }),
-        });
+            }
+        );
 
-        const data = await response.json();
 
-        if (data.success) {
+
+        if (response.data.success) {
             toast.add({
                 severity: "success",
                 summary: "Успешно",
-                detail: data.message,
+                detail: response.data.message,
                 life: 3000,
             });
             emailDialogVisible.value = false; // Закрыть диалог после успешной отправки
         } else {
-            throw new Error(data.message || "Не удалось отправить письмо");
+            throw new Error(response.data.message || "Не удалось отправить письмо");
         }
     } catch (error) {
         toast.add({
@@ -306,7 +298,7 @@ const addProductToOrder = async () => {
         toast.add({
             severity: "warn",
             summary: "Ошибка",
-            detail: "Оберіть товар перед добавлением.",
+            detail: "Ви не вибрали товар!",
             life: 3000,
         });
         return;
@@ -319,7 +311,7 @@ const addProductToOrder = async () => {
         toast.add({
             severity: "warn",
             summary: "Ошибка",
-            detail: "Для данного товара необходимо выбрать вариацию.",
+            detail: "Ви не вибрали варіацію!",
             life: 3000,
         });
         return;
@@ -328,8 +320,8 @@ const addProductToOrder = async () => {
     const itemPrice =
         selectedProduct.value.variations?.length && selectedVariation.value
             ? selectedProduct.value.variations.find(
-                  (v) => v.id === selectedVariation.value
-              ).price
+                (v) => v.id === selectedVariation.value
+            ).price
             : selectedProduct.value.price;
 
     const itemToAdd = {
@@ -338,8 +330,8 @@ const addProductToOrder = async () => {
         name: selectedProduct.value.name,
         variation_name: selectedVariation.value
             ? productVariations.value.find(
-                  (v) => v.value === selectedVariation.value
-              ).label
+                (v) => v.value === selectedVariation.value
+            ).label
             : null,
         quantity: 1,
         price: itemPrice,
@@ -418,41 +410,27 @@ const removeOrderItem = (event, orderId, itemId) => {
 
 const updateOrderItem = async (itemId, field, value) => {
     try {
-        const response = await fetch(
-            `/orders/${order.value.id}/items/${itemId}`,
-            {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Requested-With": "XMLHttpRequest", // Указывает, что это AJAX-запрос
-                    "X-CSRF-TOKEN": document
-                        .querySelector('meta[name="csrf-token"]')
-                        .getAttribute("content"),
-                },
-                body: JSON.stringify({ [field]: value }),
-            }
+        const response = await axios.put(
+            `/orders/${order.value.id}/items/${itemId}`, // URL
+            { [field]: value }, // Тело запроса
         );
 
-        if (!response.ok) {
-            throw new Error("Ошибка обновления");
-        }
-
-        const data = await response.json();
-
         // Обновляем данные заказа
-        order.value = data.order;
+        order.value = response.data.order;
 
+        // Уведомление об успехе
         toast.add({
             severity: "success",
             summary: "Успешно",
-            detail: "Товар успешно обновлен.",
+            detail: "Продукт успішно оновлено!",
             life: 3000,
         });
     } catch (error) {
+        // Уведомление об ошибке
         toast.add({
             severity: "error",
             summary: "Ошибка",
-            detail: error.message,
+            detail: error.response?.data?.message || error.message, // Обработка ошибки
             life: 5000,
         });
     }
@@ -700,12 +678,10 @@ const openInpostModal = () => {
         const quantity = item.quantity;
 
         // Формируем строки для comment и reference
-        const commentString = `${productName}${
-            variationName ? "," + variationName : ""
-        },${quantity}`;
-        const referenceString = `${productId}${
-            variationId ? "," + variationId : ""
-        },${quantity}`;
+        const commentString = `${productName}${variationName ? "," + variationName : ""
+            },${quantity}`;
+        const referenceString = `${productId}${variationId ? "," + variationId : ""
+            },${quantity}`;
 
         commentParts.push(commentString);
         referenceParts.push(referenceString);
@@ -755,13 +731,13 @@ const openInpostModal = () => {
             },
         ],
         insurance: {
-            amount: totalAmount(order.value.items) || 0,
+            amount: totalAmount(order.value.items).toFixed(2) || 0,
             currency: "PLN",
         },
         cod: {
             amount: order.value.is_paid
                 ? 0
-                : totalAmount(order.value.items) || 0,
+                : totalAmount(order.value.items).toFixed(2) || 0,
             currency: "PLN",
         },
         additional_services: ["email", "sms"],
@@ -874,6 +850,24 @@ const formatErrors = (errors, prefix = "") => {
 if (order.value.inpost_id && !order.value.tracking_number) {
     checkTrackingNumber();
 }
+
+const copyToClipboard = async (caption) => {
+    try {
+        await navigator.clipboard.writeText(caption);
+        toast.add({
+            severity: "success",
+            summary: "Скопійовано!",
+            life: 5000,
+        });
+    } catch (error) {
+        toast.add({
+            severity: "error",
+            summary: "Виникла помилка!",
+            life: 5000,
+        });
+        console.error("Failed to copy to clipboard:", error);
+    }
+};
 </script>
 
 <template>
@@ -887,24 +881,15 @@ if (order.value.inpost_id && !order.value.tracking_number) {
     <Head title="Просмотр заказа" />
     <Layout>
         <div class="bg-[#0f172a] mb-3" v-if="duplicateOrders[0]">
-            <div
-                class="bg-surface-900 text-gray-100 py-4 flex justify-center items-center flex-wrap"
-            >
+            <div class="bg-surface-900 text-gray-100 py-4 flex justify-center items-center flex-wrap">
                 <div class="font-bold inline-flex gap-1 items-center">
                     🔥 Увага! Є дублікати! 🔥
-                    <Button
-                        label="Показати"
-                        severity="secondary"
-                        @click="dialogVisible = true"
-                    />
+                    <Button label="Показати" severity="secondary" @click="dialogVisible = true" />
                 </div>
             </div>
         </div>
         <!-- 🔥 Выводим ошибки ЧИТАБЕЛЬНО 🔥 -->
-        <div
-            v-if="errorMessages.length"
-            class="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded"
-        >
+        <div v-if="errorMessages.length" class="mt-4 mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
             <h4 class="font-bold">Помилки:</h4>
             <ul>
                 <li v-for="(error, index) in errorMessages" :key="index">
@@ -913,51 +898,61 @@ if (order.value.inpost_id && !order.value.tracking_number) {
             </ul>
         </div>
         <div class="flex justify-between items-center gap-3">
-            <div
-                class="w-2/4 flex items-center gap-3 rounded-xl bg-teal-50/50 p-2 border border-gray-300"
-            >
-                <Button type="button" variant="outlined"
-                    >ID: {{ order.id }}
+            <div class="w-2/4 flex flex-wrap items-center gap-3 rounded-xl bg-teal-50/50 p-2 border border-gray-300">
+                <Button type="button" size="small" variant="outlined" @click="copyToClipboard(order.id)">ID: {{ order.id
+                    }}
                 </Button>
                 <div v-if="order.inpost_id">
-                    <Button type="button" variant="outlined"
-                        >Inpost ID: {{ order.inpost_id }}
+                    <Button type="button" size="small" variant="outlined"
+                        @click="copyToClipboard(order.inpost_id)">Inpost ID: {{ order.inpost_id }}
+                    </Button>
+                </div>
+                <div v-if="order.tracking_number">
+                    <Button type="button" size="small" variant="outlined"
+                        @click="copyToClipboard(order.tracking_number)">Inpost ТТН: {{ order.tracking_number }}
+                    </Button>
+                </div>
+                <div v-if="order.return_tracking_number">
+                    <Button type="button" size="small" variant="outlined"
+                        @click="copyToClipboard(order.return_tracking_number)">Inpost ТТН Повернення: {{
+                            order.return_tracking_number }}
                     </Button>
                 </div>
             </div>
-            <div class="w-2/4">
+            <div class="w-2/4 flex gap-3 items-center">
                 <InputGroup>
-                    <InputGroupAddon
-                        :style="{
-                            backgroundColor: statuses.find(
+                    <InputGroupAddon :style="{
+                        backgroundColor: statuses.find(
+                            (s) => s.id === form.order_status_id
+                        )?.color
+                            ? '#' +
+                            statuses.find(
                                 (s) => s.id === form.order_status_id
-                            )?.color
-                                ? '#' +
-                                  statuses.find(
-                                      (s) => s.id === form.order_status_id
-                                  ).color
-                                : '#000',
-                        }"
-                    ></InputGroupAddon>
+                            ).color
+                            : '#000',
+                    }"></InputGroupAddon>
                     <IftaLabel>
-                        <Select
-                            v-model="form.order_status_id"
-                            optionValue="id"
-                            :options="statuses"
-                            optionLabel="name"
-                            placeholder="Статус Замовлення"
-                            class="w-full"
-                        />
+                        <Select v-model="form.order_status_id" optionValue="id" :options="statuses" optionLabel="name"
+                            placeholder="Статус Замовлення" class="w-full" />
                         <label for="product_quantity">Статус Замовлення</label>
                     </IftaLabel>
                 </InputGroup>
+                <div class="w-full">
+                    <IftaLabel v-if="order.inpost_id || order.tracking_number">
+                        <InputText id="inpost_status" v-model="order.inpost_status" placeholder="Інформація відсутня..."
+                            disabled class="w-full" />
+                        <label for="inpost_status">Статус Inpost</label>
+                    </IftaLabel>
+                    <Button v-if="!order.inpost_id && !order.tracking_number" class="w-full" size="large"
+                        @click="openInpostModal">
+                        <Truck class="w-6 h-6" /> Створити замовлення
+                        в InPost
+                    </Button>
+                </div>
             </div>
         </div>
 
-        <div
-            v-if="discrepanciesList.length"
-            class="p-3 bg-yellow-100 border border-yellow-400 rounded mt-3"
-        >
+        <div v-if="discrepanciesList.length" class="p-3 bg-yellow-100 border border-yellow-400 rounded mt-3">
             <h4 class="font-bold text-yellow-900">Виявлено розбіжності:</h4>
             <ul class="mt-2 text-yellow-900">
                 <li v-for="item in discrepanciesList" :key="item.label">
@@ -966,8 +961,7 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                         ❌ {{ item.userValue }}
                     </span>
                     <span class="text-green-600" v-if="item.apiValue">
-                        → ✅ {{ item.apiValue }}</span
-                    >
+                        → ✅ {{ item.apiValue }}</span>
                 </li>
             </ul>
         </div>
@@ -975,102 +969,56 @@ if (order.value.inpost_id && !order.value.tracking_number) {
         <div class="grid grid-cols-2 gap-4 text-base">
             <div>
                 <div class="mt-2">
-                    <Fieldset
-                        legend="Дані клієнта"
-                        :toggleable="true"
-                        :collapsed="false"
-                    >
+                    <Fieldset legend="Дані клієнта" :toggleable="true" :collapsed="false">
                         <div class="mb-4">
                             <label for="fullname">Им`я</label>
-                            <InputText
-                                id="fullname"
-                                v-model="form.delivery_fullname"
-                                class="w-full"
-                            />
+                            <InputText id="fullname" v-model="form.delivery_fullname" class="w-full" />
                         </div>
                         <div class="mb-4 grid grid-cols-2 gap-3">
                             <div>
                                 <label for="phone">Телефон</label>
-                                <InputText
-                                    id="phone"
-                                    v-model="form.phone"
-                                    class="w-full"
-                                />
+                                <InputText id="phone" v-model="form.phone" class="w-full" />
                             </div>
                             <div class="flex">
                                 <div class="w-full">
                                     <label for="email">Email</label>
-                                    <InputText
-                                        id="email"
-                                        v-model="form.email"
-                                        class="w-full"
-                                    />
+                                    <InputText id="email" v-model="form.email" class="w-full" />
                                 </div>
-                                <Button
-                                    size="small"
-                                    @click="changeEmail"
-                                    v-if="!form.email"
-                                    class="mt-6 ml-2"
-                                    ><RefreshCcw class="w-6 h-6"
-                                /></Button>
-                                <Button
-                                    size="small"
-                                    @click="emailDialogVisible = true"
-                                    class="mt-6 ml-2"
-                                    ><MailPlus class="w-6 h-6"
-                                /></Button>
+                                <Button size="small" @click="changeEmail" v-if="!form.email" class="mt-6 ml-2">
+                                    <RefreshCcw class="w-6 h-6" />
+                                </Button>
+                                <Button size="small" @click="emailDialogVisible = true" class="mt-6 ml-2">
+                                    <MailPlus class="w-6 h-6" />
+                                </Button>
                             </div>
                         </div>
                         <div class="mb-4 flex gap-3">
                             <div class="w-3/12">
                                 <label for="city">Місто</label>
-                                <InputText
-                                    id="city"
-                                    v-model="form.delivery_city"
-                                    class="w-full"
-                                />
+                                <InputText id="city" v-model="form.delivery_city" class="w-full" />
                             </div>
 
                             <div class="w-2/12">
                                 <label for="zipcode">Зіп код</label>
-                                <InputText
-                                    id="zipcode"
-                                    v-model="form.delivery_postcode"
-                                    class="w-full"
-                                />
+                                <InputText id="zipcode" v-model="form.delivery_postcode" class="w-full" />
                             </div>
                             <div class="w-full">
                                 <label for="address">Адреса</label>
-                                <InputText
-                                    id="address"
-                                    v-model="form.delivery_address"
-                                    class="w-full"
-                                />
+                                <InputText id="address" v-model="form.delivery_address" class="w-full" />
                             </div>
                             <div class="w-2/12">
                                 <label for="address">Будинок</label>
-                                <InputText
-                                    id="address_number"
-                                    v-model="order.delivery_address_number"
-                                    class="w-full"
-                                />
+                                <InputText id="address_number" v-model="order.delivery_address_number" class="w-full" />
                             </div>
                             <div class="w-1/12 text-center">
-                                <Button
-                                    size="small"
-                                    @click="checkAddress"
-                                    class="mt-6"
-                                    ><MapPinned class="w-6 h-6"
-                                /></Button>
+                                <Button size="small" @click="checkAddress" class="mt-6">
+                                    <MapPinned class="w-6 h-6" />
+                                </Button>
                             </div>
                         </div>
                         <div class="mb-4" v-if="form.delivery_second_address">
                             <label for="address2">Додаткова адреса</label>
-                            <InputText
-                                id="address2"
-                                v-model="form.delivery_second_address"
-                                class="w-full"
-                            />
+                            <InputText id="address2" v-model="form.delivery_second_address" class="w-full" />
                         </div>
                         <p>IP Юзера: {{ order.ip }}</p>
                     </Fieldset>
@@ -1078,198 +1026,87 @@ if (order.value.inpost_id && !order.value.tracking_number) {
 
                 <div class="flex gap-3 mt-5">
                     <IftaLabel class="w-full">
-                        <Select
-                            v-model="form.payment_method_id"
-                            optionValue="id"
-                            :options="payment_methods"
-                            optionLabel="name"
-                            placeholder="Метод оплати"
-                            class="w-full"
-                        />
+                        <Select v-model="form.payment_method_id" optionValue="id" :options="payment_methods"
+                            optionLabel="name" placeholder="Метод оплати" class="w-full" />
                         <label for="product_quantity">Метод оплати</label>
                     </IftaLabel>
 
                     <IftaLabel class="w-full">
-                        <Select
-                            v-model="form.delivery_method_id"
-                            optionValue="id"
-                            :options="delivery_methods"
-                            optionLabel="name"
-                            placeholder="Метод доставки"
-                            class="w-full"
-                        />
+                        <Select v-model="form.delivery_method_id" optionValue="id" :options="delivery_methods"
+                            optionLabel="name" placeholder="Метод доставки" class="w-full" />
                         <label for="product_quantity">Метод доставки</label>
                     </IftaLabel>
                 </div>
 
                 <div class="mb-4 mt-4">
                     <label for="comment">Коментар</label>
-                    <Textarea
-                        id="comment"
-                        v-model="form.comment"
-                        class="w-full"
-                    />
+                    <Textarea id="comment" v-model="form.comment" class="w-full" />
                 </div>
 
                 <div class="mt-2">
-                    <Fieldset
-                        legend="Додаткові поля"
-                        :toggleable="true"
-                        :collapsed="true"
-                    >
-                        <IftaLabel class=" ">
-                            <DatePicker
-                                id="delivery_date"
-                                dateFormat="yy-mm-dd"
-                                v-model="form.delivery_date"
-                                showTime
-                                hourFormat="24"
-                                fluid
-                            />
-                            <label for="delivery_date"
-                                >Дата отримання посилки клієнтом</label
-                            >
+                    <Fieldset legend="Додаткові поля" :toggleable="true" :collapsed="true">
+                        <div class="w-full">
+                            <label for="tracking_number">ТТН</label>
+                            <InputText id="tracking_number" v-model="form.tracking_number" class="w-full" />
+                        </div>
+                        <IftaLabel class="mt-5">
+                            <DatePicker id="delivery_date" dateFormat="yy-mm-dd" v-model="form.delivery_date" showTime
+                                hourFormat="24" fluid />
+                            <label for="delivery_date">Дата отримання посилки клієнтом</label>
                         </IftaLabel>
                         <div class="mt-5 flex gap-3">
                             <IftaLabel class="w-full">
-                                <Select
-                                    v-model="form.group_id"
-                                    optionValue="id"
-                                    :options="groups"
-                                    optionLabel="name"
-                                    placeholder="Група"
-                                    class="w-full"
-                                />
+                                <Select v-model="form.group_id" optionValue="id" :options="groups" optionLabel="name"
+                                    placeholder="Група" class="w-full" />
                                 <label for="product_quantity">Група</label>
                             </IftaLabel>
 
                             <IftaLabel class="w-full">
-                                <Select
-                                    v-model="form.responsible_user_id"
-                                    optionValue="id"
-                                    :options="users"
-                                    optionLabel="name"
-                                    placeholder="Відповідальний"
-                                    class="w-full"
-                                />
-                                <label for="product_quantity"
-                                    >Відповідальний</label
-                                >
+                                <Select v-model="form.responsible_user_id" optionValue="id" :options="users"
+                                    optionLabel="name" placeholder="Відповідальний" class="w-full" />
+                                <label for="product_quantity">Відповідальний</label>
                             </IftaLabel>
                         </div>
                     </Fieldset>
                 </div>
 
-                <Button @click="updateOrder" class="mt-4 w-full"
-                    ><FolderSync class="w-6 h-6" /> Зберегти замовлення</Button
-                >
+                <Button size="large" @click="updateOrder" class="mt-4 w-full">
+                    <FolderSync class="w-6 h-6" /> Зберегти замовлення
+                </Button>
             </div>
 
             <div>
                 <div class="mt-2">
-                    <Fieldset
-                        legend="Налаштування Inpost"
-                        :toggleable="true"
-                        :collapsed="false"
-                    >
-                        <div class="mt-1 mb-3">
-                            <Button
-                                v-if="!order.inpost_id"
-                                @click="openInpostModal"
-                                ><FileBox class="w-6 h-6" /> Створити замовлення
-                                в InPost</Button
-                            >
-                        </div>
-                        <div class="flex gap-3">
-                            <div class="w-full">
-                                <label for="tracking_number">ТТН</label>
-                                <InputText
-                                    id="tracking_number"
-                                    v-model="form.tracking_number"
-                                    class="w-full"
-                                />
-                            </div>
-
-                            <div class="w-full">
-                                <label for="return_tracking_number"
-                                    >ТТН Повернення</label
-                                >
-                                <InputText
-                                    id="return_tracking_number"
-                                    v-model="order.return_tracking_number"
-                                    disabled
-                                    class="w-full"
-                                />
-                            </div>
-
-                            <div class="w-full">
-                                <label for="inpost_status">Статус</label>
-                                <InputText
-                                    id="inpost_status"
-                                    v-model="order.inpost_status"
-                                    disabled
-                                    class="w-full"
-                                />
-                            </div>
-                        </div>
-                    </Fieldset>
-                </div>
-
-                <div class="mt-2">
-                    <Fieldset
-                        legend="Налаштування Оплати"
-                        :toggleable="true"
-                        :collapsed="false"
-                    >
+                    <Fieldset legend="Налаштування Оплати" :toggleable="true" :collapsed="false">
                         <div class="flex gap-3">
                             <IftaLabel class="w-full">
-                                <Select
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    class="w-full"
-                                    v-model="form.is_paid"
+                                <Select optionLabel="label" optionValue="value" class="w-full" v-model="form.is_paid"
                                     :options="[
                                         { label: 'Ні', value: 0 },
                                         { label: 'Так', value: 1 },
-                                    ]"
-                                />
+                                    ]" />
                                 <label for="is_paid">Оплачено</label>
                             </IftaLabel>
 
                             <IftaLabel class="w-full">
-                                <DatePicker
-                                    id="payment_date"
-                                    dateFormat="yy-mm-dd"
-                                    v-model="form.payment_date"
-                                    showTime
-                                    hourFormat="24"
-                                    fluid
-                                />
-                                <label for="payment_date"
-                                    >Дата онлайн оплати</label
-                                >
+                                <DatePicker id="payment_date" dateFormat="yy-mm-dd" v-model="form.payment_date" showTime
+                                    hourFormat="24" fluid />
+                                <label for="payment_date">Дата онлайн оплати</label>
                             </IftaLabel>
 
                             <div class="w-full relative">
                                 <FloatLabel variant="in">
-                                    <InputText
-                                        id="paid_amount"
-                                        v-model="form.paid_amount"
-                                        class="w-full"
-                                        @focus="isPaidAmountFocused = true"
-                                        @blur="isPaidAmountFocused = false"
-                                    />
+                                    <InputText id="paid_amount" v-model="form.paid_amount" class="w-full"
+                                        @focus="isPaidAmountFocused = true" @blur="isPaidAmountFocused = false" />
                                     <label for="in_label">Сума оплати</label>
                                 </FloatLabel>
 
                                 <!-- Подсказка с суммой заказа -->
                                 <div class="mt-3" v-if="isPaidAmountFocused">
-                                    <span
-                                        class="bg-green-500 text-white p-2 rounded cursor-pointer shadow"
+                                    <span class="bg-green-500 text-white p-2 rounded cursor-pointer shadow"
                                         @mousedown.stop.prevent="
                                             setTotalAmountToPaidInput
-                                        "
-                                    >
+                                        ">
                                         {{
                                             formatCurrency(
                                                 totalAmount(order.items)
@@ -1283,49 +1120,30 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                 </div>
 
                 <div class="mt-2">
-                    <Fieldset
-                        legend="Товари в замовленні"
-                        :toggleable="true"
-                        :collapsed="false"
-                    >
+                    <Fieldset legend="Товари в замовленні" :toggleable="true" :collapsed="false">
                         <div class="flex justify-between gap-3 mb-5">
                             <div class="grid grid-cols-2 gap-3 w-2/3">
                                 <IftaLabel>
-                                    <Select
-                                        v-model="selectedProduct"
-                                        :options="products"
-                                        size="small"
-                                        optionLabel="name"
-                                        placeholder="Оберіть товар"
-                                        class="w-full"
-                                    />
+                                    <Select v-model="selectedProduct" :options="products" size="small"
+                                        optionLabel="name" placeholder="Оберіть товар" class="w-full" />
                                     <label>Товар</label>
                                 </IftaLabel>
 
                                 <IftaLabel v-if="productVariations.length">
-                                    <Select
-                                        v-model="selectedVariation"
-                                        :options="productVariations"
-                                        size="small"
-                                        optionLabel="label"
-                                        optionValue="value"
-                                        placeholder="Оберіть вариацию"
-                                        class="w-full"
-                                    />
-                                    <label>Вариация</label>
+                                    <Select v-model="selectedVariation" :options="productVariations" size="small"
+                                        optionLabel="label" optionValue="value" placeholder="Оберіть варіацію"
+                                        class="w-full" />
+                                    <label>Варіація</label>
                                 </IftaLabel>
                             </div>
-                            <Button
-                                class="mb-4 w-1/3"
-                                @click="addProductToOrder"
-                                ><PackagePlus class="w-6 h-6" /> Додати
-                                товар</Button
-                            >
+                            <Button class="mb-4 w-1/3" @click="addProductToOrder">
+                                <PackagePlus class="w-6 h-6" /> Додати
+                                товар
+                            </Button>
                         </div>
 
                         <table
-                            class="table-auto w-full border-collapse border border-gray-300 rounded-xl bg-teal-50/50 p-2"
-                        >
+                            class="table-auto w-full border-collapse border border-gray-300 rounded-xl bg-teal-50/50 p-2">
                             <thead>
                                 <tr>
                                     <th class="border border-gray-300 p-2">
@@ -1354,16 +1172,13 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                                         <span v-if="item.product_id">{{
                                             item.product.name
                                         }}</span>
-                                        <span
-                                            v-else-if="
-                                                item.product_variation_id
-                                            "
-                                        >
+                                        <span v-else-if="
+                                            item.product_variation_id
+                                        ">
                                             {{
                                                 item.product_variation.product
                                                     .name
-                                            }}</span
-                                        >
+                                            }}</span>
                                         <span v-else>Товар не знайдено...</span>
                                     </td>
                                     <td class="border border-gray-300 p-2">
@@ -1381,32 +1196,20 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                                             <template #display>
                                                 {{ item.quantity }}
                                             </template>
-                                            <template
-                                                #content="{ closeCallback }"
-                                            >
-                                                <span
-                                                    class="inline-flex items-center gap-2"
-                                                >
-                                                    <InputText
-                                                        v-model.number="
+                                            <template #content="{ closeCallback }">
+                                                <span class="inline-flex items-center gap-2">
+                                                    <InputText v-model.number="item.quantity
+                                                        " class="w-full" />
+                                                    <Button icon="pi pi-times" text severity="danger" @click="
+                                                        updateOrderItem(
+                                                            item.id,
+                                                            'quantity',
                                                             item.quantity
-                                                        "
-                                                        class="w-full"
-                                                    />
-                                                    <Button
-                                                        icon="pi pi-times"
-                                                        text
-                                                        severity="danger"
-                                                        @click="
-                                                            updateOrderItem(
-                                                                item.id,
-                                                                'quantity',
-                                                                item.quantity
-                                                            );
-                                                            closeCallback();
-                                                        "
-                                                        ><Check
-                                                    /></Button>
+                                                        );
+                                                    closeCallback();
+                                                    ">
+                                                        <Check />
+                                                    </Button>
                                                 </span>
                                             </template>
                                         </Inplace>
@@ -1416,31 +1219,20 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                                             <template #display>
                                                 {{ item.price }}
                                             </template>
-                                            <template
-                                                #content="{ closeCallback }"
-                                            >
-                                                <span
-                                                    class="inline-flex items-center gap-2"
-                                                >
-                                                    <InputText
-                                                        v-model.number="
+                                            <template #content="{ closeCallback }">
+                                                <span class="inline-flex items-center gap-2">
+                                                    <InputText v-model.number="item.price
+                                                        " class="w-full" />
+                                                    <Button text severity="danger" @click="
+                                                        updateOrderItem(
+                                                            item.id,
+                                                            'price',
                                                             item.price
-                                                        "
-                                                        class="w-full"
-                                                    />
-                                                    <Button
-                                                        text
-                                                        severity="danger"
-                                                        @click="
-                                                            updateOrderItem(
-                                                                item.id,
-                                                                'price',
-                                                                item.price
-                                                            );
-                                                            closeCallback();
-                                                        "
-                                                        ><Check
-                                                    /></Button>
+                                                        );
+                                                    closeCallback();
+                                                    ">
+                                                        <Check />
+                                                    </Button>
                                                 </span>
                                             </template>
                                         </Inplace>
@@ -1452,19 +1244,14 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                                             )
                                         }}
                                     </td>
-                                    <td
-                                        class="border border-gray-300 p-2 text-center"
-                                    >
-                                        <Button
-                                            severity="secondary"
-                                            @click="
-                                                removeOrderItem(
-                                                    $event,
-                                                    order.id,
-                                                    item.id
-                                                )
-                                            "
-                                        >
+                                    <td class="border border-gray-300 p-2 text-center">
+                                        <Button severity="secondary" @click="
+                                            removeOrderItem(
+                                                $event,
+                                                order.id,
+                                                item.id
+                                            )
+                                            ">
                                             <Trash class="h-4 w-4" />
                                         </Button>
                                     </td>
@@ -1472,15 +1259,10 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <td
-                                        colspan="4"
-                                        class="border border-gray-300 p-2 font-bold text-right"
-                                    >
+                                    <td colspan="4" class="border border-gray-300 p-2 font-bold text-right">
                                         Загальна сума:
                                     </td>
-                                    <td
-                                        class="border border-gray-300 p-2 font-bold"
-                                    >
+                                    <td class="border border-gray-300 p-2 font-bold">
                                         {{
                                             formatCurrency(
                                                 totalAmount(order.items)
@@ -1495,65 +1277,53 @@ if (order.value.inpost_id && !order.value.tracking_number) {
             </div>
         </div>
 
-        <h3 class="text-lg font-bold mb-3">Історія відправки листів</h3>
-        <table class="table-auto w-full border-collapse border border-gray-300">
-            <thead>
-                <tr>
-                    <th class="border border-gray-300 p-2">Дата відправки</th>
-                    <th class="border border-gray-300 p-2">Статус</th>
-                    <th class="border border-gray-300 p-2">Email</th>
-                    <th class="border border-gray-300 p-2">Тема</th>
-                    <th class="border border-gray-300 p-2">Помилка</th>
-                    <th class="border border-gray-300 p-2">Лист</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="email in order.email_history" :key="email.id">
-                    <td class="border border-gray-300 p-2">
-                        {{ email.sent_at || "Не відправлено" }}
-                    </td>
-                    <td class="border border-gray-300 p-2">
-                        <span
-                            v-if="email.status === 'success'"
-                            class="text-green-600"
-                            >Успішно</span
-                        >
-                        <span v-else class="text-red-600">Помилка</span>
-                    </td>
-                    <td class="border border-gray-300 p-2">
-                        {{ email.to_email }}
-                    </td>
-                    <td class="border border-gray-300 p-2">
-                        {{ email.subject }}
-                    </td>
-                    <td class="border border-gray-300 p-2">
-                        {{ email.error_message || "-" }}
-                    </td>
-                    <td class="border border-gray-300 p-2">
-                        <Button
-                            label="Показати лист"
-                            @click="
-                                bodyEmail = email.body;
+        <div class="my-4">
+            <Fieldset legend="Email історія" :toggleable="true" :collapsed="false">
+                <table class="table-auto w-full border-collapse border border-gray-300 text-sm my-2">
+                    <thead>
+                        <tr>
+                            <th class="border border-gray-300 p-2">Дата відправки</th>
+                            <th class="border border-gray-300 p-2">Статус</th>
+                            <th class="border border-gray-300 p-2">Email</th>
+                            <th class="border border-gray-300 p-2">Тема</th>
+                            <th class="border border-gray-300 p-2">Помилка</th>
+                            <th class="border border-gray-300 p-2">Лист</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="email in order.email_history" :key="email.id">
+                            <td class="border border-gray-300 p-2">
+                                {{ email.sent_at || "Не відправлено" }}
+                            </td>
+                            <td class="border border-gray-300 p-2">
+                                <span v-if="email.status === 'success'" class="text-green-600">Успішно</span>
+                                <span v-else class="text-red-600">Помилка</span>
+                            </td>
+                            <td class="border border-gray-300 p-2">
+                                {{ email.to_email }}
+                            </td>
+                            <td class="border border-gray-300 p-2">
+                                {{ email.subject }}
+                            </td>
+                            <td class="border border-gray-300 p-2">
+                                {{ email.error_message || "-" }}
+                            </td>
+                            <td class="border border-gray-300 p-2">
+                                <Button label="Показати лист" @click="
+                                    bodyEmail = email.body;
                                 showBodyEmail = true;
-                            "
-                        />
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+                                " />
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </Fieldset>
+        </div>
 
-        <Dialog
-            v-model:visible="dialogVisible"
-            header="Дублікати замовлення"
-            :style="{ width: '75vw' }"
-            maximizable
-            modal
-            :contentStyle="{ height: '300px' }"
-        >
+        <Dialog v-model:visible="dialogVisible" header="Дублікати замовлення" :style="{ width: '75vw' }" maximizable
+            modal :contentStyle="{ height: '100vh' }">
             <div class="overflow-auto">
-                <table
-                    class="min-w-full border-collapse border border-gray-300"
-                >
+                <table class="min-w-full border-collapse border border-gray-300">
                     <thead>
                         <tr class="bg-gray-100">
                             <th class="border border-gray-300 p-2">Статус</th>
@@ -1574,25 +1344,14 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="duplicate in duplicateOrders"
-                            :key="duplicate.id"
-                            class="even:bg-gray-50"
-                        >
+                        <tr v-for="duplicate in duplicateOrders" :key="duplicate.id" class="even:bg-gray-50">
                             <td class="border border-gray-300 p-2">
-                                <span
-                                    v-if="duplicate.status"
-                                    class="rounded p-1 text-white text-xs"
-                                    :style="{
-                                        backgroundColor: `#${duplicate.status.color}`,
-                                    }"
-                                >
+                                <span v-if="duplicate.status" class="rounded p-1 text-white text-xs" :style="{
+                                    backgroundColor: `#${duplicate.status.color}`,
+                                }">
                                     {{ duplicate.status?.name }}
                                 </span>
-                                <span
-                                    v-else
-                                    class="rounded p-1 text-white bg-black text-xs"
-                                >
+                                <span v-else class="rounded p-1 text-white bg-black text-xs">
                                     Без статусу
                                 </span>
                             </td>
@@ -1602,52 +1361,37 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                             <td class="border border-gray-300 p-2">
                                 {{ duplicate.delivery_fullname }}
                             </td>
-                            <td
-                                class="border border-gray-300 p-2"
-                                :class="{
-                                    'text-red-700 font-bold':
-                                        duplicate.phone === order.phone,
-                                }"
-                            >
+                            <td class="border border-gray-300 p-2" :class="{
+                                'text-red-700 font-bold':
+                                    duplicate.phone === order.phone,
+                            }">
                                 {{ duplicate.phone }}
                             </td>
-                            <td
-                                class="border border-gray-300 p-2"
-                                :class="{
-                                    'text-red-700 font-bold':
-                                        duplicate.email === order.email,
-                                }"
-                            >
+                            <td class="border border-gray-300 p-2" :class="{
+                                'text-red-700 font-bold':
+                                    duplicate.email === order.email,
+                            }">
                                 {{ duplicate.email }}
                             </td>
-                            <td
-                                class="border border-gray-300 p-2"
-                                :class="{
-                                    'text-red-700 font-bold':
-                                        duplicate.ip === order.ip,
-                                }"
-                            >
+                            <td class="border border-gray-300 p-2" :class="{
+                                'text-red-700 font-bold':
+                                    duplicate.ip === order.ip,
+                            }">
                                 {{ duplicate.ip }}
                             </td>
                             <td class="border border-gray-300 p-2">
-                                <div
-                                    v-for="item in duplicate.items"
-                                    :key="item.id"
-                                >
+                                <div v-for="item in duplicate.items" :key="item.id">
                                     <div class="text-xs">
                                         <span v-if="item.product_id">{{
                                             item.product.name
                                         }}</span>
-                                        <span
-                                            v-else-if="
-                                                item.product_variation_id
-                                            "
-                                        >
+                                        <span v-else-if="
+                                            item.product_variation_id
+                                        ">
                                             {{
                                                 item.product_variation.product
                                                     .name
-                                            }}</span
-                                        >
+                                            }}</span>
                                         <span v-else>Товар не знайдено...</span>
 
                                         <span v-if="item.product_variation_id">
@@ -1675,10 +1419,7 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                                 {{ duplicate.payment_method?.name }}
                             </td>
                             <td class="border border-gray-300 p-2 text-center">
-                                <Button
-                                    size="small"
-                                    @click="openOrderDialog(duplicate)"
-                                >
+                                <Button size="small" @click="openOrderDialog(duplicate)">
                                     <Pencil class="w-5 h-5" /> Детально
                                 </Button>
                             </td>
@@ -1688,35 +1429,20 @@ if (order.value.inpost_id && !order.value.tracking_number) {
             </div>
         </Dialog>
 
-        <Dialog
-            v-model:visible="visible"
-            maximizable
-            modal
-            header="Деталі замовлення"
-            :style="{ width: '100rem' }"
-            :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
-        >
+        <Dialog v-model:visible="visible" maximizable modal header="Деталі замовлення" :style="{ width: '100rem' }"
+            :breakpoints="{ '1199px': '75vw', '575px': '90vw' }">
             <div v-if="selectedOrder">
                 <!-- Основная информация -->
                 <div class="bg-[#eee] rounded py-5 px-2 text-normal border-b">
-                    <div
-                        class="grid grid-cols-3 gap-4 justify-items-center items-center"
-                    >
+                    <div class="grid grid-cols-3 gap-4 justify-items-center items-center">
                         <p>
                             <strong class="mr-2">Статус замовлення:</strong>
-                            <span
-                                v-if="selectedOrder.status"
-                                class="rounded p-1 text-white text-xs"
-                                :style="{
-                                    backgroundColor: `#${selectedOrder.status.color}`,
-                                }"
-                            >
+                            <span v-if="selectedOrder.status" class="rounded p-1 text-white text-xs" :style="{
+                                backgroundColor: `#${selectedOrder.status.color}`,
+                            }">
                                 {{ selectedOrder.status?.name }}
                             </span>
-                            <span
-                                v-else
-                                class="rounded p-1 text-white bg-black text-xs"
-                            >
+                            <span v-else class="rounded p-1 text-white bg-black text-xs">
                                 Без статусу
                             </span>
                         </p>
@@ -1724,12 +1450,10 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                             <strong>Відповідальний:</strong>
                             {{ selectedOrder.responsible_user?.name }}
                         </p>
-                        <Button
-                            size="small"
-                            @click="viewOrder(selectedOrder.id)"
-                            ><Pencil class="w-5 h-5" /> Редагувати
-                            замовлення</Button
-                        >
+                        <Button size="small" @click="viewOrder(selectedOrder.id)">
+                            <Pencil class="w-5 h-5" /> Редагувати
+                            замовлення
+                        </Button>
                     </div>
                 </div>
 
@@ -1778,9 +1502,7 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                     </div>
                 </div>
 
-                <table
-                    class="table-auto w-full border-collapse border border-gray-300 my-5"
-                >
+                <table class="table-auto w-full border-collapse border border-gray-300 my-5">
                     <thead>
                         <tr>
                             <th class="border border-gray-300 p-2">Назва</th>
@@ -1801,8 +1523,7 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                                 <span v-else-if="item.product_variation_id">
                                     {{
                                         item.product_variation.product.name
-                                    }}</span
-                                >
+                                    }}</span>
                                 <span v-else>Товар не знайдено...</span>
                             </td>
                             <td class="border border-gray-300 p-2">
@@ -1828,10 +1549,7 @@ if (order.value.inpost_id && !order.value.tracking_number) {
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td
-                                colspan="4"
-                                class="border border-gray-300 p-2 font-bold text-right"
-                            >
+                            <td colspan="4" class="border border-gray-300 p-2 font-bold text-right">
                                 Загальна сума:
                             </td>
                             <td class="border border-gray-300 p-2 font-bold">
@@ -1880,9 +1598,7 @@ if (order.value.inpost_id && !order.value.tracking_number) {
 
                 <!-- Основная информация -->
                 <div class="border-b bg-[#eee] rounded-sm p-2 text-normal">
-                    <div
-                        class="grid grid-cols-2 gap-4 mt-2 justify-items-center"
-                    >
+                    <div class="grid grid-cols-2 gap-4 mt-2 justify-items-center">
                         <p>
                             <strong>Замовлення створено:</strong>
                             {{ formatDateTime(selectedOrder.created_at) }}
@@ -1896,328 +1612,226 @@ if (order.value.inpost_id && !order.value.tracking_number) {
             </div>
         </Dialog>
 
-        <Dialog
-            v-model:visible="emailDialogVisible"
-            header="Відправка Email"
-            modal
-            :style="{ width: '50vw' }"
-            :breakpoints="{ '960px': '75vw', '640px': '90vw' }"
-        >
+        <Dialog v-model:visible="emailDialogVisible" header="Відправка Email" modal :style="{ width: '50vw' }"
+            :breakpoints="{ '960px': '75vw', '640px': '90vw' }">
             <div class="grid grid-cols-1 gap-4">
-                <ToggleButton
-                    v-model="customSendEmailTemplate"
-                    onLabel="Вибрати зі списку шаблонів"
-                    offLabel="Створити лист самостійно"
-                />
+                <ToggleButton v-model="customSendEmailTemplate" onLabel="Вибрати зі списку шаблонів"
+                    offLabel="Створити лист самостійно" />
 
                 <div v-if="customSendEmailTemplate == false">
                     <label for="template">Шаблон листа</label>
-                    <Select
-                        id="template"
-                        v-model="selectedTemplateId"
-                        @change="previewTemplate"
-                        :options="
-                            emailTemplates.map((template) => ({
-                                label: template.name,
-                                value: template.id,
-                            }))
-                        "
-                        optionValue="value"
-                        optionLabel="label"
-                        placeholder="Оберіть шаблон"
-                        class="w-full"
-                    />
+                    <Select id="template" v-model="selectedTemplateId" @change="previewTemplate" :options="emailTemplates.map((template) => ({
+                        label: template.name,
+                        value: template.id,
+                    }))
+                        " optionValue="value" optionLabel="label" placeholder="Оберіть шаблон" class="w-full" />
 
                     <div v-if="selectedTemplateId">
                         <h3 class="mt-5">Превью шаблона:</h3>
-                        <div
-                            class="p-3 border border-[#000]"
-                            v-html="previewHtml"
-                        ></div>
+                        <div class="p-3 border border-[#000]" v-html="previewHtml"></div>
                     </div>
                 </div>
                 <div v-else>
                     <div class="mb-6">
                         <h3 class="text-lg font-bold mb-3">Доступні макроси</h3>
                         <ul class="space-y-1 flex gap-3 w-full flex-wrap">
-                            <li
-                                v-for="macro in macros"
-                                :key="macro.key"
-                                @click="insertMacro(macro.key)"
-                                class="bg-gray-100 p-1 rounded shadow cursor-pointer hover:bg-gray-200"
-                            >
-                                <span
-                                    class="text-xs text-gray-500"
-                                    v-tooltip.top="macro.description"
-                                    >{{ macro.key }}</span
-                                >
+                            <li v-for="macro in macros" :key="macro.key" @click="insertMacro(macro.key)"
+                                class="bg-gray-100 p-1 rounded shadow cursor-pointer hover:bg-gray-200">
+                                <span class="text-xs text-gray-500" v-tooltip.top="macro.description">{{ macro.key
+                                }}</span>
                             </li>
                         </ul>
                     </div>
                     <div>
                         <label for="custom-subject">Тема</label>
-                        <InputText
-                            id="custom-subject"
-                            v-model="customSubject"
-                            class="w-full"
-                        />
+                        <InputText id="custom-subject" v-model="customSubject" class="w-full" />
                     </div>
                     <div class="mt-3">
                         <label for="custom-body">Лист</label>
-                        <Textarea
-                            id="custom-body"
-                            ref="customBodyTextarea"
-                            v-model="customBody"
-                            rows="5"
-                            class="w-full"
-                        />
+                        <Textarea id="custom-body" ref="customBodyTextarea" v-model="customBody" rows="5"
+                            class="w-full" />
                     </div>
                 </div>
             </div>
             <template #footer>
-                <Button class="p-button-success" @click="sendEmail"
-                    ><Send /> Відправити</Button
-                >
+                <Button class="p-button-success" @click="sendEmail">
+                    <Send /> Відправити
+                </Button>
             </template>
         </Dialog>
 
-        <Dialog
-            v-model:visible="showBodyEmail"
-            maximizable
-            modal
-            header="Тіло листа"
-            :style="{ width: '50rem' }"
-            :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
-        >
+        <Dialog v-model:visible="showBodyEmail" maximizable modal header="Тіло листа" :style="{ width: '50rem' }"
+            :breakpoints="{ '1199px': '75vw', '575px': '90vw' }">
             <p class="m-0" v-html="bodyEmail"></p>
         </Dialog>
 
-        <Dialog
-            v-model:visible="inpostModalVisible"
-            header="Створення замовлення в InPost"
-            :style="{ width: '90vw' }"
-            :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
-            maximizable
-            modal
-        >
+        <Dialog v-model:visible="inpostModalVisible" header="Створення замовлення в InPost" :style="{ width: '90vw' }"
+            :breakpoints="{ '1199px': '75vw', '575px': '90vw' }" maximizable modal>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <div>
-                        <Fieldset
-                            legend="Налаштування Одержувача"
-                            :toggleable="true"
-                            :collapsed="false"
-                        >
-                        <div class="flex gap-2">
-                            <div class="mb-4 w-full">
-                                <label>Ім'я</label>
-                                <InputText
-                                    v-model="inpostData.receiver.first_name"
-                                    class="w-full"
-                                />
-                            </div>
-                            <div class="mb-4 w-full">
-                                <label>Прізвище</label>
-                                <InputText
-                                    v-model="inpostData.receiver.last_name"
-                                    class="w-full"
-                                />
-                            </div>
-                          </div>
-                          <div class="flex gap-2">
-                            <div class="mb-4 w-full">
-                                <label>Email</label>
-                                <InputText
-                                    v-model="inpostData.receiver.email"
-                                    class="w-full"
-                                />
-                            </div>
-                            <div class="mb-4 w-full">
-                                <label>Телефон</label>
-                                <InputText
-                                    v-model="inpostData.receiver.phone"
-                                    class="w-full"
-                                />
-                            </div>
-                          </div>
+                        <Fieldset legend="Налаштування Одержувача" :toggleable="true" :collapsed="false">
                             <div class="flex gap-2">
-                              <div class="w-3/12">
-                                <label>Місто</label>
-                                <InputText
-                                    v-model="inpostData.receiver.address.city"
-                                    class="w-full"
-                                />
+                                <div class="mb-4 w-full">
+                                    <label>Ім'я</label>
+                                    <InputText v-model="inpostData.receiver.first_name" class="w-full" />
+                                </div>
+                                <div class="mb-4 w-full">
+                                    <label>Прізвище</label>
+                                    <InputText v-model="inpostData.receiver.last_name" class="w-full" />
+                                </div>
                             </div>
+                            <div class="flex gap-2">
+                                <div class="mb-4 w-full">
+                                    <label>Email</label>
+                                    <InputText v-model="inpostData.receiver.email" class="w-full" />
+                                </div>
+                                <div class="mb-4 w-full">
+                                    <label>Телефон</label>
+                                    <InputText v-model="inpostData.receiver.phone" class="w-full" />
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <div class="w-3/12">
+                                    <label>Місто</label>
+                                    <InputText v-model="inpostData.receiver.address.city" class="w-full" />
+                                </div>
 
-                            <div class="w-2/12">
-                                <label>Зіп код</label>
-                                <InputText
-                                    v-model="
-                                        inpostData.receiver.address.post_code
-                                    "
-                                    class="w-full"
-                                />
-                            </div>
-                            <div class="w-full">
-                                <label>Адреса</label>
-                                <InputText
-                                    v-model="inpostData.receiver.address.street"
-                                    class="w-full"
-                                />
-                            </div>
-                            <div class="w-2/12">
-                                <label>Будинок</label>
-                                <InputText
-                                    v-model="
-                                        inpostData.receiver.address
-                                            .building_number
-                                    "
-                                    class="w-full"
-                                />
-                            </div>
-                                
+                                <div class="w-2/12">
+                                    <label>Зіп код</label>
+                                    <InputText v-model="inpostData.receiver.address.post_code
+                                        " class="w-full" />
+                                </div>
+                                <div class="w-full">
+                                    <label>Адреса</label>
+                                    <InputText v-model="inpostData.receiver.address.street" class="w-full" />
+                                </div>
+                                <div class="w-2/12">
+                                    <label>Будинок</label>
+                                    <InputText v-model="inpostData.receiver.address
+                                        .building_number
+                                        " class="w-full" />
+                                </div>
+
                             </div>
                         </Fieldset>
                     </div>
                     <div class="mt-2">
-                        <Fieldset
-                            legend="Налаштування Відправника"
-                            :toggleable="true"
-                            :collapsed="true"
-                        >
-                            <div class="mb-4">
-                                <label>Назва компанії</label>
-                                <InputText
-                                    v-model="inpostData.sender.company_name"
-                                    class="w-full"
-                                />
+                        <Fieldset legend="Налаштування Відправника" :toggleable="true" :collapsed="true">
+                            <div class="flex gap-2">
+                                <div class="mb-4 w-full">
+                                    <label>Ім'я</label>
+                                    <InputText v-model="inpostData.sender.first_name" class="w-full" />
+                                </div>
+                                <div class="mb-4 w-full">
+                                    <label>Прізвище</label>
+                                    <InputText v-model="inpostData.sender.last_name" class="w-full" />
+                                </div>
                             </div>
-                            <div class="mb-4">
-                                <label>Ім'я</label>
-                                <InputText
-                                    v-model="inpostData.sender.first_name"
-                                    class="w-full"
-                                />
+                            <div class="flex gap-2">
+                                <div class="mb-4 w-full">
+                                    <label>Email</label>
+                                    <InputText v-model="inpostData.sender.email" class="w-full" />
+                                </div>
+                                <div class="mb-4 w-full">
+                                    <label>Телефон</label>
+                                    <InputText v-model="inpostData.sender.phone" class="w-full" />
+                                </div>
                             </div>
-                            <div class="mb-4">
-                                <label>Email</label>
-                                <InputText
-                                    v-model="inpostData.sender.email"
-                                    class="w-full"
-                                />
-                            </div>
-                            <div class="mb-4">
-                                <label>Телефон</label>
-                                <InputText
-                                    v-model="inpostData.sender.phone"
-                                    class="w-full"
-                                />
+                            <div class="flex gap-2">
+                                <div class="w-3/12">
+                                    <label>Місто</label>
+                                    <InputText v-model="inpostData.sender.address.city" class="w-full" />
+                                </div>
+
+                                <div class="w-2/12">
+                                    <label>Зіп код</label>
+                                    <InputText v-model="inpostData.sender.address.post_code
+                                        " class="w-full" />
+                                </div>
+                                <div class="w-full">
+                                    <label>Адреса</label>
+                                    <InputText v-model="inpostData.sender.address.street" class="w-full" />
+                                </div>
+                                <div class="w-2/12">
+                                    <label>Будинок</label>
+                                    <InputText v-model="inpostData.sender.address
+                                        .building_number
+                                        " class="w-full" />
+                                </div>
+
                             </div>
                         </Fieldset>
-
-
-                       
                     </div>
                     <div class="mt-2">
-                          <Fieldset
-                            legend="Деталі посилки"
-                            :toggleable="true"
-                            :collapsed="false"
-                        >
-                        <div class="flex gap-2">
-                        <div class="mb-4">
-                    <label>Вага (кг)</label>
-                    <InputText
-                        v-model="inpostData.parcels[0].weight.amount"
-                        class="w-full"
-                    />
-                  </div>
-                  <div class="mb-4">
-                    <label>Довжина (мм)</label>
-                    <InputText
-                        v-model="inpostData.parcels[0].dimensions.length"
-                        class="w-full"
-                    />
-                  </div>
-                  <div class="mb-4">
-                    <label>Ширина (мм)</label>
-                    <InputText
-                        v-model="inpostData.parcels[0].dimensions.width"
-                        class="w-full"
-                    />
-                  </div>
-                  <div class="mb-4">
-                    <label>Висота (мм)</label>
-                    <InputText
-                        v-model="inpostData.parcels[0].dimensions.height"
-                        class="w-full"
-                    />
+                        <Fieldset legend="Деталі посилки" :toggleable="true" :collapsed="false">
+                            <div class="flex gap-2">
+                                <div class="mb-4">
+                                    <label>Вага (кг)</label>
+                                    <InputText v-model="inpostData.parcels[0].weight.amount" class="w-full" />
+                                </div>
+                                <div class="mb-4">
+                                    <label>Довжина (мм)</label>
+                                    <InputText v-model="inpostData.parcels[0].dimensions.length" class="w-full" />
+                                </div>
+                                <div class="mb-4">
+                                    <label>Ширина (мм)</label>
+                                    <InputText v-model="inpostData.parcels[0].dimensions.width" class="w-full" />
+                                </div>
+                                <div class="mb-4">
+                                    <label>Висота (мм)</label>
+                                    <InputText v-model="inpostData.parcels[0].dimensions.height" class="w-full" />
+                                </div>
+                            </div>
+                        </Fieldset>
                     </div>
-                  </div>
-                  </Fieldset>
-                        </div>
                 </div>
 
                 <!-- Одержувач -->
 
                 <div>
-                  <!-- Фінансові умови -->
-                  <div>
-                  <Fieldset
-                            legend="Налаштування Ціни та Страховки"
-                            :toggleable="true"
-                            :collapsed="false"
-                        >
-                        <div class="flex gap-2">
-                          <div class="mb-4 w-full">
-                    <label>Сума страховки (PLN)</label>
-                    <InputText
-                        v-model="inpostData.insurance.amount"
-                        class="w-full"
-                    />
-                  </div>
-                  <div class="mb-4 w-full">
-                    <label>Сума післяплати (PLN)</label>
-                    <InputText v-model="inpostData.cod.amount" class="w-full" />
+                    <!-- Фінансові умови -->
+                    <div>
+                        <Fieldset legend="Налаштування Ціни та Страховки" :toggleable="true" :collapsed="false">
+                            <div class="flex gap-2">
+                                <div class="mb-4 w-full">
+                                    <label>Сума післяплати (PLN)</label>
+                                    <InputText v-model="inpostData.cod.amount" class="w-full" />
+                                </div>
+                                <div class="mb-4 w-full">
+                                    <label>Сума страховки (PLN)</label>
+                                    <InputText v-model="inpostData.insurance.amount" class="w-full" />
+                                </div>
+
+                            </div>
+                        </Fieldset>
                     </div>
-                  </div>
-                  </Fieldset>
-                </div>
 
-                 <!-- Додаткові дані -->
-                 <div class="mt-2">
-                  <Fieldset
-                            legend="Додаткові поля"
-                            :toggleable="true"
-                            :collapsed="false"
-                        >
-                        <div class="mb-4 w-full">
-                    <label>Референс</label>
-                    <InputText v-model="inpostData.reference" class="w-full" />
-                  </div>
-                  <div class="mb-4 w-full">
-                    <label>Коментар</label>
-                    <InputText
-                        v-model="inpostData.comments"
-                        class="w-full"
-                    />
-                  </div>
-                  </Fieldset>
-                </div>
+                    <!-- Додаткові дані -->
+                    <div class="mt-2">
+                        <Fieldset legend="Додаткові поля" :toggleable="true" :collapsed="false">
+                            <div class="mb-4 w-full">
+                                <label>Референс</label>
+                                <InputText v-model="inpostData.reference" class="w-full" />
+                            </div>
+                            <div class="mb-4 w-full">
+                                <label>Коментар</label>
+                                <InputText v-model="inpostData.comments" class="w-full" />
+                            </div>
+                        </Fieldset>
+                    </div>
 
-            
-                    <Button
-                      class="mt-4 w-full"
-                                @click="sendToInpost"
-                                ><FileBox class="w-6 h-6" /> Створити замовлення
-                                в InPost</Button
-                            >
+
+                    <Button class="mt-4 w-full" size="large" @click="sendToInpost">
+                        <Truck class="w-6 h-6" /> Створити замовлення
+                        в InPost
+                    </Button>
 
                 </div>
 
-                
 
-               
+
+
             </div>
         </Dialog>
     </Layout>
@@ -2259,6 +1873,7 @@ if (order.value.inpost_id && !order.value.tracking_number) {
     0% {
         transform: rotate(0deg);
     }
+
     100% {
         transform: rotate(360deg);
     }

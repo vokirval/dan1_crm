@@ -91,10 +91,9 @@ const isChildPage = computed(() => {
 
 // Возвращаем пользователя назад
 const goBack = () => {
-  
     window.history.back(); // Возвращаемся на предыдущую страницу, если есть referrer
-  
 };
+
 
 </script>
 
