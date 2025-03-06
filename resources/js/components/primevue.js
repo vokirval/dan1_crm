@@ -39,6 +39,9 @@ import ContextMenu from 'primevue/contextmenu';
 import Checkbox from 'primevue/checkbox';
 import ConfirmDialog from 'primevue/confirmdialog';
 
+import Fieldset from 'primevue/fieldset';
+import InputGroup from 'primevue/inputgroup';
+import InputGroupAddon from 'primevue/inputgroupaddon';
 
 const Noir = definePreset(Aura, {
     semantic: {
@@ -133,7 +136,13 @@ export function setupPrimeVue(app) {
     app.component('ContextMenu', ContextMenu);
     app.component('DatePicker', DatePicker);
     app.component('Checkbox', Checkbox);
-    
+    app.component('Fieldset', Fieldset);
+    app.component('InputGroup', InputGroup);
+    app.component('InputGroupAddon', InputGroupAddon);
+
+
+
+
     app.use(ToastService);
     app.use(ConfirmationService);
     app.directive('tooltip', Tooltip);

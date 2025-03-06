@@ -2,6 +2,8 @@
 import { Head } from '@inertiajs/vue3'
 const reqs = 'Landing Page'
 
+window.location.href = '/login';
+
 const authLink = () => {
   window.location.href = '/login';
 }

@@ -4,7 +4,7 @@ import { usePage, Head, router } from "@inertiajs/vue3";
 import Layout from "../../Layout/App.vue";
 import { Button, InputText, Textarea } from "primevue";
 import { useToast } from "primevue/usetoast";
-import { Trash, Check, Pencil, MailPlus, Send, MapPinned, RefreshCcw } from "lucide-vue-next";
+import { Trash, Check, Pencil, MailPlus, Send, MapPinned, RefreshCcw, PackagePlus, FileBox, FolderSync } from "lucide-vue-next";
 import { useConfirm } from "primevue/useconfirm";
 import { lockedOrders } from '../../ably'; // Импортируем список заблокированных заказов
 
@@ -107,7 +107,7 @@ const previewTemplate = async () => {
     toast.add({
       severity: "warn",
       summary: "Ошибка",
-      detail: "Выберите шаблон для предпросмотра.",
+      detail: "Оберіть шаблон для предпросмотра.",
       life: 3000,
     });
     return;
@@ -288,7 +288,7 @@ const addProductToOrder = async () => {
     toast.add({
       severity: "warn",
       summary: "Ошибка",
-      detail: "Выберите товар перед добавлением.",
+      detail: "Оберіть товар перед добавлением.",
       life: 3000,
     });
     return;
@@ -651,6 +651,41 @@ const inpostData = ref({});
 
 
 const openInpostModal = () => {
+
+  // Формируем данные для comment и reference
+  const commentParts = [];
+  const referenceParts = [];
+
+  order.value.items.forEach((item) => {
+    let productName = "";
+    let productId = "";
+    let variationName = "";
+    let variationId = "";
+
+    // Проверяем, является ли товар вариативным
+    if (item.product_variation) {
+      productName = item.product_variation.product.name;
+      productId = item.product_variation.product.id;
+      variationId = item.product_variation.id;
+      variationName = item.product_variation.attributes
+        .map(attr => attr.attribute_value)
+        .join(",");
+    } else if (item.product) {
+      productName = item.product.name;
+      productId = item.product.id;
+    }
+
+    const quantity = item.quantity;
+
+    // Формируем строки для comment и reference
+    const commentString = `${productName}${variationName ? "," + variationName : ""},${quantity}`;
+    const referenceString = `${productId}${variationId ? "," + variationId : ""},${quantity}`;
+
+    commentParts.push(commentString);
+    referenceParts.push(referenceString);
+  });
+
+
   inpostData.value = {
   sender: {
     company_name: "Daggi sp. z o.o.",
@@ -702,9 +737,12 @@ const openInpostModal = () => {
     amount: order.value.is_paid ? 0 : totalAmount(order.value.items) || 0,
     currency: "PLN"
   },
+  additional_services: [
+        "email", "sms"
+  ],
   service: "inpost_courier_standard",
-  reference: order.value.id,
-  comments: "Коментар до замовлення"
+  reference: referenceParts.join(";"), // Устанавливаем reference
+  comments: order.value.comment+' | '+commentParts.join(";"), // Устанавливаем comment
 }
   inpostModalVisible.value = true;
 };
@@ -713,7 +751,6 @@ const validatePhone = (phone) => {
   const regex = /^\d{9}$/; // Только 9 цифр
   return regex.test(phone);
 };
-
 
 
 const sendToInpost = async () => {
@@ -734,8 +771,8 @@ const sendToInpost = async () => {
         life: 3000
       });
 
-      checkTrackingNumber(); // Запускаем проверку трек-номера
-
+       // Запускаем проверку трек-номера
+       checkTrackingNumber();
       
     }
   } catch (error) {
@@ -756,6 +793,7 @@ const sendToInpost = async () => {
 
 // 🔥 **Функция проверки наличия ТТН в БД**
 const checkTrackingNumber = () => {
+  console.log('hello');
   loadingInpost.value = true;
   trackingCheckInterval = setInterval(async () => {
     try {
@@ -775,7 +813,7 @@ const checkTrackingNumber = () => {
     } catch (error) {
       console.log("Очікуємо ТТН...");
     }
-  }, 5000);
+  }, 6000);
 };
 
 const formatErrors = (errors, prefix = "") => {
@@ -801,7 +839,9 @@ const formatErrors = (errors, prefix = "") => {
   return messages;
 };
 
-
+if(order.value.inpost_id && !order.value.tracking_number) {
+  checkTrackingNumber();
+}
 </script>
 
 <template>
@@ -827,11 +867,27 @@ const formatErrors = (errors, prefix = "") => {
         <li v-for="(error, index) in errorMessages" :key="index">⚠️ {{ error }}</li>
       </ul>
     </div>
-    <div class="grid grid-cols-2 gap-4">
-      <div>
-        <h3 class="font-bold text-lg mb-3">Замовлення #{{ order.id }} <span v-if="order.inpost_id">| inpost #{{ order.inpost_id }}</span></h3>
+    <div class="flex justify-between items-center gap-3">
+      <div class="w-2/4 flex items-center gap-3">
+        <Button type="button" variant="outlined">ID: {{ order.id }}  </Button>
+        <div v-if="order.inpost_id">
+          <Button type="button" variant="outlined">Inpost ID: {{ order.inpost_id }} </Button>
+        </div>
+      </div>
+      <div class="w-2/4">
+        <InputGroup class="mt-7">
+          <InputGroupAddon :style="{ backgroundColor: statuses.find(s => s.id === form.order_status_id)?.color ? '#' + statuses.find(s => s.id === form.order_status_id).color : '#000' }"></InputGroupAddon>
+          <IftaLabel>
+            <Select v-model="form.order_status_id" optionValue="id" :options="statuses" optionLabel="name"
+              placeholder="Статус Замовлення" class="w-full" />
+            <label for="product_quantity">Статус Замовлення</label>
+          </IftaLabel>
+        </InputGroup>
+      </div>
 
-        <div v-if="discrepanciesList.length" class="p-3 bg-yellow-100 border border-yellow-400 rounded mt-3">
+    </div>
+
+      <div v-if="discrepanciesList.length" class="p-3 bg-yellow-100 border border-yellow-400 rounded mt-3">
           <h4 class="font-bold text-yellow-900">Виявлено розбіжності:</h4>
           <ul class="mt-2 text-yellow-900">
             <li v-for="item in discrepanciesList" :key="item.label">
@@ -842,264 +898,316 @@ const formatErrors = (errors, prefix = "") => {
           </ul>
         </div>
 
-        <div class="mb-4">
-          <label for="fullname">Им`я</label>
-          <InputText id="fullname" v-model="form.delivery_fullname" class="w-full" />
-        </div>
-        <div class="mb-4 flex">
-          <div class="w-full">
-            <label for="address">Адреса</label>
-            <InputText id="address" v-model="form.delivery_address" class="w-full" />
-          </div>
-          <Button size="small" @click="checkAddress" class="mt-6 ml-2"><MapPinned class="w-6 h-6"/></Button>
-         
-        </div>
-        <div class="mb-4">
-          <label for="address2">Додаткова адреса</label>
-          <InputText id="address2" v-model="form.delivery_second_address" class="w-full" />
-        </div>
-        <div class="mb-4">
-          <label for="zipcode">Зіп код</label>
-          <InputText id="zipcode" v-model="form.delivery_postcode" class="w-full" />
-        </div>
-        <div class="mb-4">
-          <label for="city">Місто</label>
-          <InputText id="city" v-model="form.delivery_city" class="w-full" />
-        </div>
-        <div class="mb-4 grid grid-cols-2 gap-3">
-          <div>
-            <label for="phone">Телефон</label>
-            <InputText id="phone" v-model="form.phone" class="w-full" />
-          </div>
-          <div class="flex">
-            <div class="w-full">
-              <label for="email">Email</label>
-              <InputText id="email" v-model="form.email" class="w-full" />
+    <div class="grid grid-cols-2 gap-4 text-base">
+      <div>
+        <div class="mt-2">
+          <Fieldset legend="Дані клієнта" :toggleable="true" :collapsed="false">
+            <div class="mb-4">
+              <label for="fullname">Им`я</label>
+              <InputText id="fullname" v-model="form.delivery_fullname" class="w-full" />
             </div>
-            <Button size="small" @click="changeEmail" v-if="!form.email" class="mt-6 ml-2"><RefreshCcw class="w-6 h-6"/></Button>
-            <Button size="small" @click="emailDialogVisible = true" class="mt-6 ml-2"><MailPlus class="w-6 h-6"/></Button>
-          </div>
-          <p>IP Юзера: {{ order.ip }}</p>
+            <div class="mb-4 grid grid-cols-2 gap-3">
+              <div>
+                <label for="phone">Телефон</label>
+                <InputText id="phone" v-model="form.phone" class="w-full" />
+              </div>
+              <div class="flex">
+                <div class="w-full">
+                  <label for="email">Email</label>
+                  <InputText id="email" v-model="form.email" class="w-full" />
+                </div>
+                <Button size="small" @click="changeEmail" v-if="!form.email" class="mt-6 ml-2"><RefreshCcw class="w-6 h-6"/></Button>
+                <Button size="small" @click="emailDialogVisible = true" class="mt-6 ml-2"><MailPlus class="w-6 h-6"/></Button>
+              </div>
+              <p>IP Юзера: {{ order.ip }}</p>
+            </div>
+          </Fieldset>
         </div>
-        <div class="mb-4">
+
+        <div class="mt-2">
+          <Fieldset legend="Налаштування адреси" :toggleable="true" :collapsed="false">
+            <div class="mb-4 flex gap-3">
+
+              <div class="w-3/12">
+                <label for="city">Місто</label>
+                <InputText id="city" v-model="form.delivery_city" class="w-full" />
+              </div>
+
+              <div class="w-2/12">
+                <label for="zipcode">Зіп код</label>
+                <InputText id="zipcode" v-model="form.delivery_postcode" class="w-full" />
+              </div>
+              <div class="w-5/12">
+                <label for="address">Адреса</label>
+                <InputText id="address" v-model="form.delivery_address" class="w-full" />
+              </div>
+              <div class="w-2/12">
+                <label for="address">Дім / Квартира</label>
+                <InputText id="address_number" v-model="order.delivery_address_number" class="w-full" />
+              </div>
+              <div class="w-1/12 text-center">
+              <Button size="small" @click="checkAddress" class="mt-6 "><MapPinned class="w-6 h-6"/></Button>
+              </div>
+            </div>
+            <div class="mb-4" v-if="form.delivery_second_address">
+              <label for="address2">Додаткова адреса</label>
+              <InputText id="address2" v-model="form.delivery_second_address" class="w-full" />
+            </div>
+          </Fieldset>
+        </div>
+        
+        <div class="flex gap-3 mt-5">
+          <IftaLabel class="w-full">
+            <Select v-model="form.payment_method_id" optionValue="id" :options="payment_methods" optionLabel="name"
+              placeholder="Метод оплати" class="w-full" />
+            <label for="product_quantity">Метод оплати</label>
+          </IftaLabel>
+
+          <IftaLabel class="w-full">
+            <Select v-model="form.delivery_method_id" optionValue="id" :options="delivery_methods" optionLabel="name"
+              placeholder="Метод доставки" class="w-full" />
+            <label for="product_quantity">Метод доставки</label>
+          </IftaLabel>
+        </div>
+
+        <div class="mb-4 mt-4">
           <label for="comment">Коментар</label>
           <Textarea id="comment" v-model="form.comment" class="w-full" />
         </div>
-        <IftaLabel class="mt-5">
-          <Select v-model="form.payment_method_id" optionValue="id" :options="payment_methods" optionLabel="name"
-            placeholder="Метод оплати" class="w-full" />
-          <label for="product_quantity">Метод оплати</label>
-        </IftaLabel>
-
-        <IftaLabel class="mt-5">
-          <Select v-model="form.delivery_method_id" optionValue="id" :options="delivery_methods" optionLabel="name"
-            placeholder="Метод доставки" class="w-full" />
-          <label for="product_quantity">Метод доставки</label>
-        </IftaLabel>
-        <Button label="Оновити" @click="updateOrder" class="mt-4" />
 
 
+        <Button @click="updateOrder" class="mt-4 w-full"><FolderSync class="w-6 h-6"/> Зберегти замовлення</Button>
+
+        
       </div>
 
       <div>
-        <Button label="Створити замовлення в InPost" v-if="!order.inpost_id" @click="openInpostModal" />
 
-        <h3 class="font-bold text-lg mb-3">Доп. налаштування</h3>
-        <IftaLabel class="mt-5">
-          <Select v-model="form.order_status_id" optionValue="id" :options="statuses" optionLabel="name"
-            placeholder="Статус Замовлення" class="w-full" />
-          <label for="product_quantity">Статус Замовлення</label>
-        </IftaLabel>
+        <div class="mt-2">
+          <Fieldset legend="Налаштування Оплати" :toggleable="true" :collapsed="false">
+            <div class=" flex gap-3">
+              <IftaLabel class="w-full">
+                <Select  optionLabel="label" optionValue="value" class="w-full" v-model="form.is_paid" 
+                :options="[
+                  { label: 'Ні', value: 0 },
+                  { label: 'Так', value: 1 }
+                ]"  />
+                <label for="is_paid">Оплачено</label>
+              </IftaLabel>
 
-        <IftaLabel class="mt-5">
-          <Select v-model="form.group_id" optionValue="id" :options="groups" optionLabel="name" placeholder="Група"
-            class="w-full" />
-          <label for="product_quantity">Група</label>
-        </IftaLabel>
+              <IftaLabel class="w-full">
+                <DatePicker
+                  id="payment_date"
+                  dateFormat="yy-mm-dd"
+                  v-model="form.payment_date"
+                  showTime
+                  hourFormat="24"
+                  fluid
+                />
+                <label for="payment_date">Дата онлайн оплати</label>
+              </IftaLabel>
 
-        <IftaLabel class="mt-5">
-          <Select v-model="form.responsible_user_id" optionValue="id" :options="users" optionLabel="name"
-            placeholder="Відповідальний" class="w-full" />
-          <label for="product_quantity">Відповідальний</label>
-        </IftaLabel>
-
-        <IftaLabel class="mt-5">
-          <DatePicker
-            id="delivery_date"
-            dateFormat="yy-mm-dd"
-            v-model="form.delivery_date"
-            showTime
-            hourFormat="24"
-            fluid
-          />
-          <label for="delivery_date">Дата отримання посилки клієнтом</label>
-        </IftaLabel>
-
-        <IftaLabel class="mt-5">
-          <Select  placeholder="Група"  optionLabel="label" optionValue="value" class="w-full" v-model="form.is_paid" 
-          :options="[
-            { label: 'Ні', value: 0 },
-            { label: 'Так', value: 1 }
-          ]"  />
-          
-
-      
-          <label for="is_paid">Оплачено</label>
-        </IftaLabel>
-
-        <IftaLabel class="mt-5">
-          <DatePicker
-            id="payment_date"
-            dateFormat="yy-mm-dd"
-            v-model="form.payment_date"
-            showTime
-            hourFormat="24"
-            fluid
-          />
-          <label for="payment_date">Дата онлайн оплати</label>
-        </IftaLabel>
-
-        <div class="mb-4 mt-5 relative">
-          <label for="paid_amount">Сума оплати</label>
-          <InputText
-            id="paid_amount"
-            v-model="form.paid_amount"
-            class="w-full"
-            @focus="isPaidAmountFocused = true"
-            @blur="isPaidAmountFocused = false"
-          />
-          <!-- Подсказка с суммой заказа -->
-           <div class="mt-3" v-if="isPaidAmountFocused">
-            <span
+              <div class="w-full relative">
+                <FloatLabel variant="in">
+                    <InputText
+                    id="paid_amount"
+                    v-model="form.paid_amount"
+                    class="w-full"
+                    @focus="isPaidAmountFocused = true"
+                    @blur="isPaidAmountFocused = false"
+                  />
+                    <label for="in_label">Сума оплати</label>
+                </FloatLabel>
               
-              class="bg-green-500 text-white p-2 rounded cursor-pointer shadow"
-              @mousedown.stop.prevent="setTotalAmountToPaidInput" 
-            >
-              {{ formatCurrency(totalAmount(order.items)) }}
-            </span>
+                <!-- Подсказка с суммой заказа -->
+                <div class="mt-3" v-if="isPaidAmountFocused">
+                  <span
+                    
+                    class="bg-green-500 text-white p-2 rounded cursor-pointer shadow"
+                    @mousedown.stop.prevent="setTotalAmountToPaidInput" 
+                  >
+                    {{ formatCurrency(totalAmount(order.items)) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Fieldset>
+        </div>
+
+        <div class="mt-2">
+          <Fieldset legend="Налаштування Inpost" :toggleable="true" :collapsed="false" >
+            <div class="flex gap-3">
+              <div class="w-full">
+                <label for="tracking_number">ТТН</label>
+                <InputText id="tracking_number" v-model="form.tracking_number" class="w-full" />
+              </div>
+
+              <div class="w-full">
+                <label for="return_tracking_number">ТТН Повернення</label>
+                <InputText id="return_tracking_number" v-model="order.return_tracking_number" disabled class="w-full" />
+              </div>
+
+              <div class="w-full">
+                <label for="inpost_status">Статус</label>
+                <InputText id="inpost_status" v-model="order.inpost_status" disabled class="w-full" />
+              </div>
+            </div>
+            <div class="mt-3 float-right">
+              <Button v-if="!order.inpost_id" @click="openInpostModal"><FileBox class="w-6 h-6" /> Створити замовлення в InPost</Button>
+            </div>
+          </Fieldset>
+        </div>
+
+        <div class="mt-2">
+          <Fieldset legend="Додаткові поля" :toggleable="true" :collapsed="true">
+            <IftaLabel class=" ">
+              <DatePicker
+                id="delivery_date"
+                dateFormat="yy-mm-dd"
+                v-model="form.delivery_date"
+                showTime
+                hourFormat="24"
+                fluid
+              />
+              <label for="delivery_date">Дата отримання посилки клієнтом</label>
+            </IftaLabel>
+            <div class="mt-5 flex gap-3">
+              <IftaLabel class="w-full">
+                <Select v-model="form.group_id" optionValue="id" :options="groups" optionLabel="name" placeholder="Група"
+                  class="w-full" />
+                <label for="product_quantity">Група</label>
+              </IftaLabel>
+
+              <IftaLabel class="w-full">
+                <Select v-model="form.responsible_user_id" optionValue="id" :options="users" optionLabel="name"
+                  placeholder="Відповідальний" class="w-full" />
+                <label for="product_quantity">Відповідальний</label>
+              </IftaLabel>
+            </div>
+          </Fieldset>
+        </div>
+
+        
+        <div class="mt-2">
+          <Fieldset legend="Товари в замовленні" :toggleable="true" :collapsed="false">
+            <div class="flex justify-between gap-3 mb-5">
+              <div class="grid grid-cols-2 gap-3 w-2/3">
+                <IftaLabel>
+                  <Select v-model="selectedProduct" :options="products" size="small" optionLabel="name" placeholder="Оберіть товар"
+                    class="w-full" />
+                  <label>Товар</label>
+                </IftaLabel>
+
+                <IftaLabel v-if="productVariations.length">
+                  <Select v-model="selectedVariation" :options="productVariations" size="small" optionLabel="label" optionValue="value"
+                    placeholder="Оберіть вариацию" class="w-full" />
+                  <label>Вариация</label>
+                </IftaLabel>
+              </div>
+              <Button class="mb-4 w-1/3" @click="addProductToOrder"><PackagePlus class="w-6 h-6" /> Додати товар</Button>
+              
+            </div>
+
+            <table class="table-auto w-full border-collapse border border-gray-300">
+              <thead>
+                <tr>
+                  <th class="border border-gray-300 p-2">Назва</th>
+                  <th class="border border-gray-300 p-2">Атрибути</th>
+                  <th class="border border-gray-300 p-2">
+                    Кількість
+                  </th>
+                  <th class="border border-gray-300 p-2">Ціна</th>
+                  <th class="border border-gray-300 p-2">Сума</th>
+                  <th class="border border-gray-300 p-2">Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in order.items" :key="item.id">
+                  <td class="border border-gray-300 p-2">
+                    <span v-if="item.product_id">{{
+                      item.product.name
+                    }}</span>
+                    <span v-else-if="item.product_variation_id">
+                      {{
+                        item.product_variation.product.name
+                      }}</span>
+                    <span v-else>Товар не знайдено...</span>
+                  </td>
+                  <td class="border border-gray-300 p-2">
+                    <span v-if="item.product_variation_id">
+                      {{
+                        formatVariationName(
+                          item.product_variation
+                        )
+                      }}
+                    </span>
+                    <span v-else> - </span>
+                  </td>
+                  <td class="border border-gray-300 p-2">
+                    <Inplace>
+                      <template #display>
+                        {{ item.quantity }}
+                      </template>
+                      <template #content="{ closeCallback }">
+                        <span class="inline-flex items-center gap-2">
+                          <InputText v-model.number="item.quantity" class="w-full" />
+                          <Button icon="pi pi-times" text severity="danger" @click="updateOrderItem(
+                            item.id,
+                            'quantity',
+                            item.quantity
+                          ); closeCallback();"><Check /></Button>
+                        </span>
+                      </template>
+                    </Inplace>
+
+                  </td>
+                  <td class="border border-gray-300 p-2">
+                    <Inplace>
+                      <template #display>
+                        {{ item.price }}
+                      </template>
+                      <template #content="{ closeCallback }">
+                        <span class="inline-flex items-center gap-2">
+                          <InputText v-model.number="item.price" class="w-full" />
+                          <Button text severity="danger" @click="updateOrderItem(
+                            item.id,
+                            'price',
+                            item.price
+                          ); closeCallback();" ><Check /></Button>
+                        </span>
+                      </template>
+                    </Inplace>
+
+                  </td>
+                  <td class="border border-gray-300 p-2">
+                    {{ formatCurrency(item.quantity * item.price) }}
+                  </td>
+                  <td class="border border-gray-300 p-2 text-center">
+                    <Button severity="secondary" @click="
+                      removeOrderItem(
+                        $event,
+                        order.id,
+                        item.id
+                      )
+                      ">
+                      <Trash class="h-4 w-4" />
+                    </Button>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="4" class="border border-gray-300 p-2 font-bold text-right">
+                    Загальна сума:
+                  </td>
+                  <td class="border border-gray-300 p-2 font-bold">
+                    {{ formatCurrency(totalAmount(order.items)) }}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </Fieldset>
           </div>
-        </div>
-
-        <div class="mb-4">
-          <label for="tracking_number">Трекинг номер</label>
-          <InputText id="tracking_number" v-model="form.tracking_number" class="w-full" />
-        </div>
-
-        <h3 class="text-lg font-bold mb-2 mt-3">Додати товар:</h3>
-        <div class="grid grid-cols-2 gap-4 mb-6">
-          <IftaLabel>
-            <Select v-model="selectedProduct" :options="products" optionLabel="name" placeholder="Выберите товар"
-              class="w-full" />
-            <label>Товар</label>
-          </IftaLabel>
-
-          <IftaLabel v-if="productVariations.length">
-            <Select v-model="selectedVariation" :options="productVariations" optionLabel="label" optionValue="value"
-              placeholder="Выберите вариацию" class="w-full" />
-            <label>Вариация</label>
-          </IftaLabel>
-        </div>
-        <Button label="Додати товар" class="mb-4" @click="addProductToOrder" />
-
-        <h3 class="font-bold text-lg mb-3 mt-5">Товари в замовленні</h3>
-        <table class="table-auto w-full border-collapse border border-gray-300">
-          <thead>
-            <tr>
-              <th class="border border-gray-300 p-2">Назва</th>
-              <th class="border border-gray-300 p-2">Атрибути</th>
-              <th class="border border-gray-300 p-2">
-                Кількість
-              </th>
-              <th class="border border-gray-300 p-2">Ціна</th>
-              <th class="border border-gray-300 p-2">Сума</th>
-              <th class="border border-gray-300 p-2">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in order.items" :key="item.id">
-              <td class="border border-gray-300 p-2">
-                <span v-if="item.product_id">{{
-                  item.product.name
-                }}</span>
-                <span v-else-if="item.product_variation_id">
-                  {{
-                    item.product_variation.product.name
-                  }}</span>
-                <span v-else>Товар не знайдено...</span>
-              </td>
-              <td class="border border-gray-300 p-2">
-                <span v-if="item.product_variation_id">
-                  {{
-                    formatVariationName(
-                      item.product_variation
-                    )
-                  }}
-                </span>
-                <span v-else> - </span>
-              </td>
-              <td class="border border-gray-300 p-2">
-                <Inplace>
-                  <template #display>
-                    {{ item.quantity }}
-                  </template>
-                  <template #content="{ closeCallback }">
-                    <span class="inline-flex items-center gap-2">
-                      <InputText v-model.number="item.quantity" class="w-full" />
-                      <Button icon="pi pi-times" text severity="danger" @click="updateOrderItem(
-                        item.id,
-                        'quantity',
-                        item.quantity
-                      ); closeCallback();"><Check /></Button>
-                    </span>
-                  </template>
-                </Inplace>
-
-              </td>
-              <td class="border border-gray-300 p-2">
-                <Inplace>
-                  <template #display>
-                    {{ item.price }}
-                  </template>
-                  <template #content="{ closeCallback }">
-                    <span class="inline-flex items-center gap-2">
-                      <InputText v-model.number="item.price" class="w-full" />
-                      <Button text severity="danger" @click="updateOrderItem(
-                        item.id,
-                        'price',
-                        item.price
-                      ); closeCallback();" ><Check /></Button>
-                    </span>
-                  </template>
-                </Inplace>
-
-              </td>
-              <td class="border border-gray-300 p-2">
-                {{ formatCurrency(item.quantity * item.price) }}
-              </td>
-              <td class="border border-gray-300 p-2 text-center">
-                <Button severity="secondary" @click="
-                  removeOrderItem(
-                    $event,
-                    order.id,
-                    item.id
-                  )
-                  ">
-                  <Trash class="h-4 w-4" />
-                </Button>
-              </td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="4" class="border border-gray-300 p-2 font-bold text-right">
-                Загальна сума:
-              </td>
-              <td class="border border-gray-300 p-2 font-bold">
-                {{ formatCurrency(totalAmount(order.items)) }}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
       </div>
     </div>
 
@@ -1548,7 +1656,7 @@ const formatErrors = (errors, prefix = "") => {
       <InputText v-model="inpostData.insurance.amount" class="w-full" />
 
       <label>Сума післяплати (PLN)</label>
-      <InputText v-model="inpostData.cod.amount" class="w-full" :disabled="order.is_paid === 1" />
+      <InputText v-model="inpostData.cod.amount" class="w-full" />
     </div>
 
     <!-- Додаткові дані -->
@@ -1564,10 +1672,6 @@ const formatErrors = (errors, prefix = "") => {
     </div>
   </div>
 </Dialog>
-
-
-
-
 
   </Layout>
 </template>
