@@ -1,16 +1,15 @@
 <script setup>
 import {
-    Bell,
     ChartPie,
     CircleUser,
     Home,
     Package,
-    Package2,
     ShoppingCart,
-    ChevronDown,
     Users,
-    ChevronRight,
-    Settings
+    Settings,
+    PanelRightOpen,
+    PanelRightClose,
+    ArrowLeft
 } from "lucide-vue-next";
 import { Link, usePage } from "@inertiajs/vue3";
 import { useForm } from "@inertiajs/vue3";
@@ -29,7 +28,6 @@ const logout = () => {
 
 const collapsed = ref(false);
 const expandedItem = ref(null);
-const hoverExpanded = ref(false); // Новая переменная для отслеживания состояния при наведении
 
 const menuItems = ref([
     {
@@ -81,15 +79,7 @@ const toggleSubMenu = (item) => {
 const icons = { Home, ShoppingCart, Users, Package, ChartPie, Settings };
 const getIcon = (iconName) => icons[iconName] || null;
 
-const hoverExpand = () => {
-    collapsed.value = !collapsed.value;
-    expandedItem.value = null;
-};
 
-const hoverCollapse = () => {
-    collapsed.value = !collapsed.value;
-    expandedItem.value = null;
-};
 
 
 const page = usePage();
@@ -109,17 +99,16 @@ const goBack = () => {
 </script>
 
 <template>
-    <div class="flex min-h-screen w-full">
-        <div class="menu-container " :class="{ collapsed: !collapsed }" >
-        <Menu :model="menuItems" class="menu-content h-full">
+    <div class="flex min-h-screen w-full" :class="{ collapsed: !collapsed }">
+        <div class="menu-container" v-if="collapsed" :class="{ collapsed: !collapsed }" >
+        <Menu :model="menuItems" class="menu-content" >
             <template #start>
                 <div class="logo-container">
-                    <Checkbox v-model="collapsed" size="large" binary  />
                     <span v-if="collapsed" class="text-xl font-semibold">DAGGI SHOP</span>
                 </div>
             </template>
             <template #item="{ item, props }">
-                <div v-if="collapsed">
+                <div>
                     <a v-bind="props" class="menu-item flex items-center" @click="toggleSubMenu(item)">
                         <component :is="getIcon(item.icon)" class="menu-icon w-5 h-5 mr-2" />
                         <span v-if="collapsed">{{ item.label }}</span>
@@ -138,15 +127,17 @@ const goBack = () => {
         </Menu>
         
     </div> 
-        <div class="flex flex-col w-full testerq">
+        <div class="flex flex-col w-full">
             <header
-                class="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[40px] lg:px-6"
+                class="flex h-14 items-center gap-2 border-b bg-muted/40 px-4 lg:h-[40px] lg:px-2 divide-x"
             >
-                
-                <div class="w-full flex-1">
-                    <!-- Условие для отображения кнопки "Назад" -->
-    
-                    <Button label="Назад" severity="help" v-if="isChildPage" @click="goBack" />
+                <div>
+                    <Button severity="contrast" variant="text" v-if="!collapsed" @click="collapsed = true;"><PanelRightClose class="w-6 h-6"/></Button>
+                   <Button severity="contrast" variant="text" v-if="collapsed" @click="collapsed = false;"><PanelRightOpen class="w-6 h-6"/></Button>
+                </div>
+               
+                <div class="w-full flex-1 pl-2">
+                    <Button severity="contrast" variant="text"  v-if="isChildPage" @click="goBack"><ArrowLeft class="w-6 h-6" /> Повернутись</Button>
                 </div>
                 <!-- Триггер кнопки -->
 

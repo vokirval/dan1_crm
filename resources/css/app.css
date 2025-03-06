@@ -38,7 +38,7 @@ body {
     height: 100vh;
     display: flex;
     flex-direction: column;
-    width: 250px;
+    width:200px;
     transition: width 0.3s ease;
 }
 .menu-container.collapsed {
@@ -72,18 +72,10 @@ body {
 
 .menu-content {
     flex: 1;
-    min-width: fit-content!important;
+    width:200px;
     border-radius:unset!important;
 }
 
-.testerq {
-    width: calc(100% - 250px); /* 250px — ширина сайдбара в развернутом состоянии */
-    transition: width 0.3s ease; /* Плавный переход при изменении ширины */
-}
-
-.menu-container.collapsed + .testerq {
-    width: calc(100% - 55px); /* 50px — ширина свернутого сайдбара */
-}
 
 .submenu-item {
     padding:5px 0px;
@@ -91,4 +83,7 @@ body {
 
 .submenu-item:hover {
     text-decoration: underline; /* Добавляем подчеркивание при наведении */
+  }
+  label {
+    margin-left:5px
   }
