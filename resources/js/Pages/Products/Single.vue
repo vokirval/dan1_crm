@@ -25,6 +25,11 @@ const form = useForm({
     stock: props.product.stock,
     status: props.product.status,
     category_id: props.product.category_id,
+    short_name: props.product.short_name,
+    weight: props.product.weight,
+    length: props.product.length,
+    width: props.product.width,
+    height: props.product.height,
 });
 
 const variationForm = useForm({
@@ -158,19 +163,20 @@ const confirmDelete = (event, data) => {
 </script>
 
 <template>
+
     <Head :title="`${product.name}`" />
     <Layout>
         <Tabs value="0">
             <div class="flex justify-between items-center">
                 <TabList>
-                    <Tab value="0"
-                        ><Box class="w-5 h-5 inline-block" /> Налаштування
-                        Товару</Tab
-                    >
-                    <Tab value="1" v-if="product?.type == 'variable'"
-                        ><Boxes class="w-5 h-5 inline-block" /> Налаштування
-                        Варіацій</Tab
-                    >
+                    <Tab value="0">
+                        <Box class="w-5 h-5 inline-block" /> Налаштування
+                        Товару
+                    </Tab>
+                    <Tab value="1" v-if="product?.type == 'variable'">
+                        <Boxes class="w-5 h-5 inline-block" /> Налаштування
+                        Варіацій
+                    </Tab>
                 </TabList>
             </div>
             <TabPanels>
@@ -181,138 +187,94 @@ const confirmDelete = (event, data) => {
                                 <div class="grid md:grid-cols-2 w-full gap-5">
                                     <div>
                                         <IftaLabel>
-                                            <label for="product_name"
-                                                >Назва товару</label
-                                            >
-                                            <InputText
-                                                id="product_name"
-                                                v-model="form.name"
-                                                class="w-full"
-                                            />
+                                            <label for="product_name">Назва товару</label>
+                                            <InputText id="product_name" v-model="form.name" class="w-full" />
+                                        </IftaLabel>
+                                        <IftaLabel class="mt-5">
+                                            <label for="product_short_name">Коротка назва</label>
+                                            <InputText id="product_short_name" v-model="form.short_name"
+                                                class="w-full" />
                                         </IftaLabel>
                                         <IftaLabel class="mt-5">
                                             <label for="product_sku">SKU</label>
-                                            <InputText
-                                                id="product_sku"
-                                                v-model="form.sku"
-                                                class="w-full"
-                                            />
+                                            <InputText id="product_sku" v-model="form.sku" class="w-full" />
                                         </IftaLabel>
                                         <IftaLabel class="mt-5">
-                                            <label for="product_description"
-                                                >Опис</label
-                                            >
-                                            <Textarea
-                                                id="product_description"
-                                                class="w-full min-h-[120px]"
-                                                v-model="form.description"
-                                            />
+                                            <label for="product_description">Опис</label>
+                                            <Textarea id="product_description" class="w-full min-h-[120px]"
+                                                v-model="form.description" />
                                         </IftaLabel>
 
                                         <IftaLabel class="mt-5">
-                                            <Select
-                                                v-model="form.category_id"
-                                                optionValue="id"
-                                                :options="categories"
-                                                optionLabel="name"
-                                                placeholder="Оберіть категорію"
-                                                class="w-full"
-                                            />
-                                            <label for="product_quantity"
-                                                >Категорія товару</label
-                                            >
+                                            <Select v-model="form.category_id" optionValue="id" :options="categories"
+                                                optionLabel="name" placeholder="Оберіть категорію" class="w-full" />
+                                            <label for="product_quantity">Категорія товару</label>
                                         </IftaLabel>
 
                                         <IftaLabel class="mt-5">
-                                            <Select
-                                                v-model="form.status"
-                                                optionValue="value"
-                                                :options="statuses"
-                                                optionLabel="name"
-                                                placeholder="Статус товару"
-                                                class="w-full"
-                                            />
-                                            <label for="product_quantity"
-                                                >Статус товару</label
-                                            >
+                                            <Select v-model="form.status" optionValue="value" :options="statuses"
+                                                optionLabel="name" placeholder="Статус товару" class="w-full" />
+                                            <label for="product_quantity">Статус товару</label>
                                         </IftaLabel>
                                     </div>
                                     <div>
                                         <IftaLabel>
-                                            <Select
-                                                v-model="form.type"
-                                                optionValue="value"
-                                                :options="types"
-                                                optionLabel="name"
-                                                placeholder="Тип товару"
-                                                class="w-full"
-                                            />
-                                            <label for="product_quantity"
-                                                >Тип товару</label
-                                            >
+                                            <Select v-model="form.type" optionValue="value" :options="types"
+                                                optionLabel="name" placeholder="Тип товару" class="w-full" />
+                                            <label for="product_quantity">Тип товару</label>
                                         </IftaLabel>
 
                                         <IftaLabel class="mt-5">
-                                            <label for="product_quantity"
-                                                >Залишок</label
-                                            >
-                                            <InputText
-                                                disabled
-                                                id="product_quantity"
-                                                v-model="form.stock"
-                                                class="w-full"
-                                            />
+                                            <label for="product_quantity">Залишок</label>
+                                            <InputText disabled id="product_quantity" v-model="form.stock"
+                                                class="w-full" />
                                         </IftaLabel>
-                                        <div
-                                            class="grid md:grid-cols-2 w-full gap-5 mt-5"
-                                        >
+                                        <div class="grid md:grid-cols-2 w-full gap-5 mt-5">
                                             <IftaLabel class="mt-5">
-                                                <InputNumber
-                                                    v-model="
-                                                        form.discounted_price
-                                                    "
-                                                    id="product_discounted_price"
-                                                    locale="ua-UA"
-                                                    :minFractionDigits="2"
-                                                    fluid
-                                                />
-                                                <label
-                                                    for="product_discounted_price"
-                                                >
+                                                <InputNumber v-model="form.discounted_price
+                                                    " id="product_discounted_price" locale="ua-UA"
+                                                    :minFractionDigits="2" fluid />
+                                                <label for="product_discounted_price">
                                                     Акційна ціна
                                                 </label>
                                             </IftaLabel>
 
                                             <IftaLabel class="mt-5">
-                                                <InputNumber
-                                                    v-model="form.price"
-                                                    id="product_price"
-                                                    locale="ua-UA"
-                                                    :minFractionDigits="2"
-                                                    fluid
-                                                />
-                                                <label for="product_price"
-                                                    >Стара Ціна</label
-                                                >
+                                                <InputNumber v-model="form.price" id="product_price" locale="ua-UA"
+                                                    :minFractionDigits="2" fluid />
+                                                <label for="product_price">Стара Ціна</label>
                                             </IftaLabel>
                                         </div>
                                         <IftaLabel class="mt-5">
-                                            <InputNumber
-                                                v-model="form.cost"
-                                                id="product_cost"
-                                                locale="ua-UA"
-                                                :minFractionDigits="2"
-                                                fluid
-                                            />
-                                            <label for="product_cost"
-                                                >Собівартість</label
-                                            >
+                                            <InputNumber v-model="form.cost" id="product_cost" locale="ua-UA"
+                                                :minFractionDigits="2" fluid />
+                                            <label for="product_cost">Собівартість</label>
                                         </IftaLabel>
+                                        <div class="mt-2 mb-5">
+                                            <Fieldset legend="Деталі посилки" :toggleable="true" :collapsed="false">
+                                                <div class="flex gap-2">
+                                                    <div class="mb-4">
+                                                        <label>Вага (кг)</label>
+                                                        <InputText v-model="form.weight" class="w-full" />
+                                                    </div>
+                                                    <div class="mb-4">
+                                                        <label>Довжина (мм)</label>
+                                                        <InputText v-model="form.length" class="w-full" />
+                                                    </div>
+                                                    <div class="mb-4">
+                                                        <label>Ширина (мм)</label>
+                                                        <InputText v-model="form.width" class="w-full" />
+                                                    </div>
+                                                    <div class="mb-4">
+                                                        <label>Висота (мм)</label>
+                                                        <InputText v-model="form.height" class="w-full" />
+                                                    </div>
+                                                </div>
+                                            </Fieldset>
+                                        </div>
                                     </div>
                                 </div>
-                                <Button type="submit" class="w-full mt-5"
-                                    >Оновити товар</Button
-                                >
+                                <Button type="submit" class="w-full mt-5">Оновити товар</Button>
                             </form>
                         </template>
                     </Card>
@@ -323,122 +285,61 @@ const confirmDelete = (event, data) => {
                             <div class="grid md:grid-cols-2 w-full gap-5">
                                 <form @submit.prevent="addVariation">
                                     <IftaLabel>
-                                        <InputText
-                                            v-model="variationForm.sku"
-                                            id="varsku"
-                                            class="w-full"
-                                        />
+                                        <InputText v-model="variationForm.sku" id="varsku" class="w-full" />
                                         <label for="varsku">SKU</label>
                                     </IftaLabel>
 
                                     <IftaLabel class="mt-5">
-                                        <InputNumber
-                                            v-model="variationForm.price"
-                                            id="varprice"
-                                            class="w-full"
-                                            locale="ua-UA" :minFractionDigits="2"
-                                        />
+                                        <InputNumber v-model="variationForm.price" id="varprice" class="w-full"
+                                            locale="ua-UA" :minFractionDigits="2" />
                                         <label for="varprice">Ціна</label>
                                     </IftaLabel>
                                     <IftaLabel class="mt-5">
-                                        <InputNumber
-                                            v-model="
-                                                variationForm.discounted_price
-                                            "
-                                            id="vardiscprice"
-                                            class="w-full"
-                                            locale="ua-UA" :minFractionDigits="2"
-                                        />
-                                        <label for="vardiscprice"
-                                            >Акційна ціна</label
-                                        >
+                                        <InputNumber v-model="variationForm.discounted_price
+                                            " id="vardiscprice" class="w-full" locale="ua-UA" :minFractionDigits="2" />
+                                        <label for="vardiscprice">Акційна ціна</label>
                                     </IftaLabel>
                                     <IftaLabel class="mt-5">
-                                        <InputNumber
-                                            v-model="variationForm.cost"
-                                            id="varcost"
-                                            class="w-full"
-                                            locale="ua-UA" :minFractionDigits="2"
-                                        />
-                                        <label for="varcost"
-                                            >Собівартість</label
-                                        >
+                                        <InputNumber v-model="variationForm.cost" id="varcost" class="w-full"
+                                            locale="ua-UA" :minFractionDigits="2" />
+                                        <label for="varcost">Собівартість</label>
                                     </IftaLabel>
                                     <IftaLabel class="mt-5">
-                                        <InputNumber
-                                            v-model="variationForm.stock"
-                                            id="varstock"
-                                            class="w-full"
-                                        />
+                                        <InputNumber v-model="variationForm.stock" id="varstock" class="w-full" />
                                         <label for="varstock">Наявність</label>
                                     </IftaLabel>
                                     <IftaLabel class="w-full mt-3" variant="on">
-                                        <Select
-                                            v-model="variationForm.status"
-                                            optionValue="value"
-                                            :options="statuses"
-                                            optionLabel="name"
-                                            class="w-full"
-                                        />
-                                        <label for="product_quantity"
-                                            >Статус Варіації</label
-                                        >
+                                        <Select v-model="variationForm.status" optionValue="value" :options="statuses"
+                                            optionLabel="name" class="w-full" />
+                                        <label for="product_quantity">Статус Варіації</label>
                                     </IftaLabel>
 
-                                    <div
-                                        v-for="(
-                                            attribute, index
-                                        ) in variationForm.attributes"
-                                        :key="index"
-                                        class="grid grid-flow-col gap-2 mt-3"
-                                    >
-                                        <InputText
-                                            v-model="attribute.attribute_name"
-                                            placeholder="Назва Атрибута"
-                                            class="w-full"
-                                        />
-                                        <InputText
-                                            v-model="attribute.attribute_value"
-                                            placeholder="Значення атрибута"
-                                            class="w-full"
-                                        />
-                                        <Button
-                                            type="button"
-                                            severity="secondary"
-                                            @click="removeAttribute(index)"
-                                            class="w-auto"
-                                            ><Trash class="h-4 w-4"
-                                        /></Button>
+                                    <div v-for="(
+attribute, index
+                                        ) in variationForm.attributes" :key="index"
+                                        class="grid grid-flow-col gap-2 mt-3">
+                                        <InputText v-model="attribute.attribute_name" placeholder="Назва Атрибута"
+                                            class="w-full" />
+                                        <InputText v-model="attribute.attribute_value" placeholder="Значення атрибута"
+                                            class="w-full" />
+                                        <Button type="button" severity="secondary" @click="removeAttribute(index)"
+                                            class="w-auto">
+                                            <Trash class="h-4 w-4" />
+                                        </Button>
                                     </div>
 
-                                    <Button
-                                        variant="text"
-                                        type="button"
-                                        @click="addAttribute"
-                                        class="mt-3"
-                                        ><Plus class="w-4 h-4" />Додати
-                                        Атрибут</Button
-                                    >
-                                    <Button type="submit" class="w-full mt-3"
-                                        >Створити Варіацію</Button
-                                    >
+                                    <Button variant="text" type="button" @click="addAttribute" class="mt-3">
+                                        <Plus class="w-4 h-4" />Додати
+                                        Атрибут
+                                    </Button>
+                                    <Button type="submit" class="w-full mt-3">Створити Варіацію</Button>
                                 </form>
 
-                                <DataTable
-                                    :value="product.variations"
-                                    showGridlines
-                                    :responsiveLayout="'scroll'"
-                                >
+                                <DataTable :value="product.variations" showGridlines :responsiveLayout="'scroll'">
                                     <Column field="id" header="ID"></Column>
                                     <Column field="sku" header="SKU"></Column>
-                                    <Column
-                                        field="price"
-                                        header="Ціна"
-                                    ></Column>
-                                    <Column
-                                        field="stock"
-                                        header="Наявність"
-                                    ></Column>
+                                    <Column field="price" header="Ціна"></Column>
+                                    <Column field="stock" header="Наявність"></Column>
                                     <Column header="Атрибути">
                                         <template #body="slotProps">
                                             {{
@@ -450,13 +351,11 @@ const confirmDelete = (event, data) => {
                                     </Column>
                                     <Column class="">
                                         <template #body="{ data }">
-                                            <Button
-                                                severity="secondary"
-                                                @click="
-                                                    confirmDelete($event, data)
-                                                "
-                                                ><Trash class="w-4 h-4"
-                                            /></Button>
+                                            <Button severity="secondary" @click="
+                                                confirmDelete($event, data)
+                                                ">
+                                                <Trash class="w-4 h-4" />
+                                            </Button>
                                         </template>
                                     </Column>
                                 </DataTable>

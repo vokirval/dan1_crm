@@ -656,23 +656,37 @@ const openInpostModal = () => {
     const commentParts = [];
     const referenceParts = [];
 
+    let packageDimensions = null; // Габариты для Inpost
+    let packageWeight = null; // Вес для Inpost
+    
     order.value.items.forEach((item) => {
         let productName = "";
         let productId = "";
         let variationName = "";
         let variationId = "";
 
+        let categoryName = item.product?.category?.name || item.product_variation?.product?.category?.name || '';
+
+        // Пропускаем товары из категории "Services"
+        if (categoryName === "Services") {
+            return;
+        }
+
         // Проверяем, является ли товар вариативным
         if (item.product_variation) {
-            productName = item.product_variation.product.name;
+            productName = item.product_variation.product.short_name || item.product_variation.product.name;
             productId = item.product_variation.product.id;
             variationId = item.product_variation.id;
             variationName = item.product_variation.attributes
                 .map((attr) => attr.attribute_value)
                 .join(",");
         } else if (item.product) {
-            productName = item.product.name;
+            productName = item.product.short_name || item.product.name;
             productId = item.product.id;
+        } else {
+            productName = 'null';
+            productId = 'null';
+
         }
 
         const quantity = item.quantity;
@@ -685,7 +699,41 @@ const openInpostModal = () => {
 
         commentParts.push(commentString);
         referenceParts.push(referenceString);
+
+        // Устанавливаем габариты и вес только с первого подходящего товара
+        if (!packageDimensions) {
+            packageDimensions = {
+                length: item.product?.length || item.product_variation?.product?.length || 0, // 400 мм по умолчанию
+                width: item.product?.width || item.product_variation?.product?.width || 0, // 300 мм по умолчанию
+                height: item.product?.height || item.product_variation?.product?.height || 0, // 80 мм по умолчанию
+                unit: "mm",
+            };
+
+            packageWeight = {
+                amount: item.product?.weight || item.product_variation?.product?.weight || 0, // 1 кг по умолчанию
+                unit: "kg",
+            };
+        }
+
+
     });
+
+
+    // Если ни один товар не подходит, устанавливаем стандартные размеры
+    if (!packageDimensions) {
+        packageDimensions = {
+            length: 0,
+            width: 0,
+            height: 0,
+            unit: "mm",
+        };
+        packageWeight = {
+            amount: 0,
+            unit: "kg",
+        };
+    }
+
+    
 
     inpostData.value = {
         sender: {
@@ -718,16 +766,8 @@ const openInpostModal = () => {
         parcels: [
             {
                 id: "small_package",
-                dimensions: {
-                    length: 400,
-                    width: 300,
-                    height: 80,
-                    unit: "mm",
-                },
-                weight: {
-                    amount: 1,
-                    unit: "kg",
-                },
+                dimensions: packageDimensions,
+                weight: packageWeight,
             },
         ],
         insurance: {

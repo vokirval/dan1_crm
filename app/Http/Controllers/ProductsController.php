@@ -69,42 +69,21 @@ class ProductsController extends Controller
     /**
      * Update the specified product in storage.
      */
-    public function update(Request $request, $id)
-    {
-        $product = Product::findOrFail($id);
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'sku' => 'required|string|unique:products,sku,' . $product->id . '|max:255',
-            'price' => 'required|numeric|min:0',
-            'discounted_price' => 'nullable|numeric|min:0',
-            'cost' => 'required|numeric|min:0',
-            'stock' => 'required|integer|min:0',
-            'description' => 'nullable|string',
-            'status' => 'required|in:active,inactive',
-            'type' => 'required|in:simple,variable',
-            'category_id' => 'nullable|exists:categories,id',
-        ]);
-
-        
-
-        $product->update($validated);
-
-
-
-        return redirect()->back()->with('success', 'Продукт успішно оновлено.');
-    }
-
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'short_name' => 'nullable|string|max:255',
             'sku' => 'required|string|unique:products|max:255',
             'description' => 'nullable|string',
             'type' => 'required|in:simple,variable',
             'price' => 'required|numeric|min:0',
             'discounted_price' => 'nullable|numeric|min:0',
             'cost' => 'required|numeric|min:0',
+            'weight' => 'nullable|numeric|min:0',
+            'length' => 'nullable|integer|min:0',
+            'width' => 'nullable|integer|min:0',
+            'height' => 'nullable|integer|min:0',
             'stock' => 'required|integer|min:0',
             'status' => 'required|in:active,inactive',
             'category_id' => 'nullable|exists:categories,id',
@@ -112,8 +91,36 @@ class ProductsController extends Controller
 
         Product::create($validated);
 
-        return back()->with('success', 'Product created successfully.');
+        return back()->with('success', 'Продукт успішно створено.');
     }
+
+    public function update(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'short_name' => 'nullable|string|max:255',
+            'sku' => 'required|string|unique:products,sku,' . $product->id . '|max:255',
+            'description' => 'nullable|string',
+            'type' => 'required|in:simple,variable',
+            'price' => 'required|numeric|min:0',
+            'discounted_price' => 'nullable|numeric|min:0',
+            'cost' => 'required|numeric|min:0',
+            'weight' => 'nullable|numeric|min:0',
+            'length' => 'nullable|integer|min:0',
+            'width' => 'nullable|integer|min:0',
+            'height' => 'nullable|integer|min:0',
+            'stock' => 'required|integer|min:0',
+            'status' => 'required|in:active,inactive',
+            'category_id' => 'nullable|exists:categories,id',
+        ]);
+
+        $product->update($validated);
+
+        return redirect()->back()->with('success', 'Продукт успішно оновлено.');
+    }
+
 
 
     /**

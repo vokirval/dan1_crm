@@ -213,9 +213,11 @@ class OrdersController extends Controller
 
         if ($user->hasRole('Super Admin')) {
             $order = Order::with([
-                'items.product:name,id',
+                'items.product:id,category_id,short_name,weight,length,width,height,name',
+                'items.product.category:id,name',
                 'items.productVariation:id,product_id',
-                'items.productVariation.product:name,id',
+                'items.productVariation.product:name,category_id,short_name,weight,length,width,height,id',
+                'items.productVariation.product.category:id,name',
                 'items.productVariation.attributes',
                 'emailHistory' // Подгружаем историю писем
             ])->findOrFail($id);
@@ -227,9 +229,11 @@ class OrdersController extends Controller
 
             $order = Order::whereIn('group_id', $userGroupIds)
                 ->with([
-                    'items.product:name,id',
+                    'items.product:id,category_id,short_name,weight,length,width,height,name',
+                    'items.product.category:id,name',
                     'items.productVariation:id,product_id',
-                    'items.productVariation.product:name,id',
+                    'items.productVariation.product:name,category_id,short_name,weight,length,width,height,id',
+                    'items.productVariation.product.category:id,name',
                     'items.productVariation.attributes',
                     'emailHistory' // Подгружаем историю писем
                 ])
