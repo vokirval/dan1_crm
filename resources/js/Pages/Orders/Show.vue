@@ -1059,7 +1059,7 @@ const copyToClipboard = async (caption) => {
                             </div>
                             <div class="w-2/12">
                                 <label for="address">Будинок</label>
-                                <InputText id="address_number" v-model="order.delivery_address_number" class="w-full" />
+                                <InputText id="address_number" v-model="form.delivery_address_number" class="w-full" />
                             </div>
                             <div class="w-1/12 text-center">
                                 <Button size="small" @click="checkAddress" class="mt-6">
