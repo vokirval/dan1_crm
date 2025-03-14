@@ -513,11 +513,9 @@ const checkAddress = async () => {
         : form.value.delivery_address;
 
     const url = `https://api.geoapify.com/v1/geocode/search?street=${encodeURIComponent(
-        cleanedAddress
+        cleanedAddress+' '+form.value.delivery_address_number
     )}&postcode=${encodeURIComponent(
         form.value.delivery_postcode
-    )}&housenumber=${encodeURIComponent(
-        form.value.delivery_address_number
     )}&city=${encodeURIComponent(
         form.value.delivery_city
     )}&apiKey=cfb84a334cbb4ddabf3f0dce863d7e2c`;
