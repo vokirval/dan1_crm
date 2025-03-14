@@ -1020,7 +1020,7 @@ const copyToClipboard = async (caption) => {
                                 <label for="fullname">Им`я</label>
                                 <InputText id="fullname" v-model="form.delivery_fullname" class="w-full" />
                             </div>
-                            <div class="w-full">
+                            <div class="w-full" v-if="duplicateOrders[0]">
                                 
                                  <Button label="🔥 Увага! Є дублікати! 🔥" @click="dialogVisible = true" class="w-full" />
                             </div>
