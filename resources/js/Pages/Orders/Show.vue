@@ -513,7 +513,9 @@ const checkAddress = async () => {
         : form.value.delivery_address;
 
     const url = `https://api.geoapify.com/v1/geocode/search?street=${encodeURIComponent(
-        cleanedAddress+' '+form.value.delivery_address_number
+        cleanedAddress
+    )}&housenumber=${encodeURIComponent(
+        form.value.delivery_address_number
     )}&postcode=${encodeURIComponent(
         form.value.delivery_postcode
     )}&city=${encodeURIComponent(
@@ -575,7 +577,7 @@ const checkAddress = async () => {
         const apiCity = bestMatch.properties.city || "";
 
         // Данные, которые ввел пользователь
-        const userAddress = cleanedAddress;
+        const userAddress = cleanedAddress+' '+form.value.delivery_address_number;
         const userPostcode = form.value.delivery_postcode.trim();
         const userCity = form.value.delivery_city.trim();
 
