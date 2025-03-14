@@ -516,6 +516,8 @@ const checkAddress = async () => {
         cleanedAddress
     )}&postcode=${encodeURIComponent(
         form.value.delivery_postcode
+    )}&housenumber=${encodeURIComponent(
+        form.value.delivery_address_number
     )}&city=${encodeURIComponent(
         form.value.delivery_city
     )}&apiKey=cfb84a334cbb4ddabf3f0dce863d7e2c`;
