@@ -231,6 +231,7 @@ const formatDateForApi = (date) => {
 const form = ref({
     delivery_fullname: order.value.delivery_fullname,
     delivery_address: order.value.delivery_address,
+    delivery_address_number: order.value.delivery_address_number,
     delivery_second_address: order.value.delivery_second_address,
     delivery_postcode: order.value.delivery_postcode,
     delivery_city: order.value.delivery_city,
