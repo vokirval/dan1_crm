@@ -33,6 +33,16 @@ class UserController extends Controller
         ]);
     }
 
+    public function getall(Request $request)
+    {
+ 
+        $users = User::all();
+    
+        return response()->json([
+            'users' => $users,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([

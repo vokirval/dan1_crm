@@ -112,6 +112,7 @@ Route::middleware(['auth'])->group(function() {
 
     Route::prefix('/payment-methods')->group(function () {
         Route::get('/', [PaymentMethodController::class, 'index'])->name('payment-methods.index')->middleware('permission:Перегляд методів оплат');
+        Route::get('/getall', [PaymentMethodController::class, 'getall'])->name('payment-methods.getall')->middleware('permission:Перегляд методів оплат');
         Route::post('/', [PaymentMethodController::class, 'store'])->name('payment-methods.store')->middleware('permission:Створення методів оплат');
         Route::put('/{id}', [PaymentMethodController::class, 'update'])->name('payment-methods.update')->middleware('permission:Редагування методів оплат');
         Route::delete('/{id}', [PaymentMethodController::class, 'destroy'])->name('payment-methods.destroy')->middleware('permission:Видалення методів оплат');
@@ -136,6 +137,7 @@ Route::middleware(['auth'])->group(function() {
 
     Route::prefix('users')->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('users.index')->middleware('permission:Перегляд користувачів');
+        Route::get('/getall', [UserController::class, 'getall'])->name('users.getall')->middleware('permission:Перегляд користувачів');
         Route::post('/', [UserController::class, 'store'])->name('users.store')->middleware('permission:Створення користувачів');
         Route::put('/{user}', [UserController::class, 'update'])->name('users.update')->middleware('permission:Редагування користувачів');
         Route::delete('/{user}', [UserController::class, 'destroy'])->name('users.destroy')->middleware('permission:Видалення користувачів');

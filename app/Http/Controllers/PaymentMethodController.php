@@ -24,6 +24,16 @@ class PaymentMethodController extends Controller
         ]);
     }
 
+    public function getall(Request $request)
+    {
+ 
+        $payment_methods = PaymentMethod::all();
+    
+        return response()->json([
+            'payment_methods' => $payment_methods,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

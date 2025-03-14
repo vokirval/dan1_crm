@@ -10,8 +10,8 @@ import { lockedOrders } from '../../ably'; // Импортируем списо�
 
 axios.defaults.withCredentials = true;
 
-
-
+const users = ref([]);
+const payment_methods = ref([]);
 
 const page = usePage();
 const toast = useToast();
@@ -28,7 +28,14 @@ const filters = ref({
   phone: "",
   ip: "",
   email: "",
+  order_status_id: null,
+  payment_method_id: null,
+  responsible_user_id: null,
+  delivery_method_id: null,
+  created_at: null,
+  updated_at: null
 });
+
 
 const { props: inertiaProps } = usePage();
 console.log(inertiaProps);
@@ -74,6 +81,12 @@ const onSortChange = (event) => {
 
 const loadOrders = () => {
   isLoading.value = true;
+
+  // Убираем пустые параметры фильтрации
+  const activeFilters = Object.fromEntries(
+    Object.entries(filters.value).filter(([_, v]) => v !== "" && v !== null)
+  );
+
   router.get(
     fetchRoute,
     {
@@ -81,8 +94,8 @@ const loadOrders = () => {
       per_page: perPage.value,
       sort_by: sortBy.value,
       sort_direction: sortDirection.value,
-      status_id: currentStatusId.value,
-      ...filters.value, // Передаем все фильтры
+      order_status_id: currentStatusId.value,
+      ...activeFilters, // Передаем только активные фильтры
     },
     {
       preserveState: true,
@@ -91,11 +104,12 @@ const loadOrders = () => {
         orders.value = page.props.data;
       },
       onFinish: () => {
-        isLoading.value = false; // Выключаем состояние загрузки
+        isLoading.value = false;
       },
     }
   );
 };
+
 
 const resetFilters = () => {
   filters.value = {
@@ -241,7 +255,7 @@ const triggerMassUpdateStatus = (event) => {
     accept: () => {
       router.post('/orders/mass-update-status', {
         order_ids: selectedProduct.value.map(o => o.id),
-        status_id: selectedStatus.value
+        order_status_id: selectedStatus.value
       }, {
         onSuccess: () => {
           selectedProduct.value = [];
@@ -337,6 +351,25 @@ const duplicateOrder = (orderId) => {
     });
 };
 
+
+const loadUsers = () => {
+  if(users.value.length > 0) {
+    return;
+  }
+    axios.get('/users/getall').then(response => {
+      users.value = response.data.users;
+    });
+};
+
+const loadPaymentMethods = () => {
+  if(payment_methods.value.length > 0) {
+    return;
+  }
+    axios.get('/payment-methods/getall').then(response => {
+      payment_methods.value = response.data.payment_methods;
+    });
+};
+
 </script>
 
 <template>
@@ -392,12 +425,15 @@ const duplicateOrder = (orderId) => {
     </div>
 
 
-    <div class="flex my-5 w-full" v-if="selectedProduct[0]">
+    <div class="flex mt-5 w-full" v-if="selectedProduct[0]">
 
       <Toolbar class="w-full">
         <template #start>
+          <Button label="Inbox" outlined @click="selectedProduct = []">Вибрано: <b>{{ selectedProduct.length }}</b></Button>
+
             <!-- Дублирование заказа -->
             <Button 
+            class=" ml-3"
                  severity="secondary" 
                 v-if="selectedProduct.length === 1" 
                 @click="duplicateOrder(selectedProduct[0].id)" 
@@ -452,14 +488,19 @@ const duplicateOrder = (orderId) => {
     </Dialog>
 
 
-    <DataTable v-model:selection="selectedProduct" :value="orders.data" resizableColumns columnResizeMode="expand" showGridlines :paginator="true" :rows="perPage"
+    <DataTable class="mt-5" v-model:selection="selectedProduct" :value="orders.data" resizableColumns columnResizeMode="expand" showGridlines :paginator="true" :rows="perPage"
       :rows-per-page-options="[10, 20, 50, 100]" :first="(currentPage - 1) * perPage" :total-records="orders.total"
       :lazy="true" :sort-field="sortBy" :sort-order="sortDirection === 'asc' ? 1 : -1" @page="onPageChange"
-      @sort="onSortChange"  dataKey="id" scrollable @row-dblclick="openOrderDialog" size="small"
+      @sort="onSortChange"  dataKey="id" scrollable @row-dblclick="openOrderDialog" size="small" filterDisplay="row"
+    selectionMode="multiple"
       :class="{ 'blur-sm pointer-events-none': isLoading }" :rowClass="rowClass">
       <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-      <Column field="id" header="ID" sortable />
-      <Column class="w-[40px]" header="Статус">
+      <Column field="id" header="ID" sortable :showFilterMenu="false" style="min-width:50px;">
+        <template #filter>
+            <InputText v-model="filters.id" placeholder="ID" class="w-full" />
+        </template>
+        </Column>
+      <Column :showFilterMenu="false" class="w-[40px]" header="Статус" sortField="order_status_id"  :sortable="true">
         <template #body="{ data }">
           <span v-if="data.status" class="rounded flex items-center justify-center p-1 text-white text-xs"
             :style="{ backgroundColor: `#${data.status.color}` }">
@@ -469,13 +510,34 @@ const duplicateOrder = (orderId) => {
             Без статусу
           </span>
         </template>
+        <template #filter>
+            <Select v-model="filters.order_status_id" optionValue="id" :options="statuses" optionLabel="name" :showClear="true"
+                        placeholder="Статус" class="w-full" />
+        </template>
       </Column>
 
-      <Column field="delivery_fullname" header="Контакт" sortable />
-      <Column field="phone" header="Телефон" sortable />
-      <Column field="email" header="Email" sortable />
-      <Column field="comment" header="Коментар" />
-      <Column header="Товари">
+      <Column :showFilterMenu="false" field="delivery_fullname" header="Контакт" sortable>
+        <template #filter>
+            <InputText v-model="filters.delivery_fullname"  placeholder="ім'я або Фамілія" class="w-full" />
+        </template>
+      </Column>
+      <Column :showFilterMenu="false" field="phone" header="Телефон" sortable>
+        <template #filter>
+            <InputText v-model="filters.phone" placeholder="Телефон" class="w-full" />
+        </template>
+      </Column>
+      <Column :showFilterMenu="false" field="email" header="Email" sortable>
+        <template #filter>
+            <InputText v-model="filters.email"  placeholder="Email" class="w-full" />
+        </template>
+      </Column>
+      <Column :showFilterMenu="false" field="comment" header="Коментар" bodyClass="cursor-help" bodyStyle="max-width:250px">
+        <template #body="{ data }">
+          <div class="w-full h-full" v-tooltip.top="{ value: data.comment, showDelay: 1000, hideDelay: 300 }">{{ data.comment }}</div>
+        </template>
+      </Column>
+      
+      <Column :showFilterMenu="false" header="Товари" >
         <template #body="{ data }">
           <div v-for="item in data.items" :key="item.id">
             <div class=" text-xs">
@@ -508,14 +570,24 @@ const duplicateOrder = (orderId) => {
         </template>
       </Column>
 
-      <Column field="responsible_user.name" header="Відповідальний" />
+      <Column :showFilterMenu="false" field="responsible_user.name" header="Відповідальний">
+          <template #filter>
+            <Select v-model="filters.responsible_user_id" @click="loadUsers" :options="users" :showClear="true"
+            optionLabel="name" optionValue="id" placeholder="Оберіть відповідального" class="w-full" />
+          </template>
+      </Column>
 
-      <Column field="delivery_city" header="Місто" sortable />
-      <Column field="delivery_address" header="Адреса" />
-      <Column field="delivery_postcode" header="Зіп код" />
+      <Column :showFilterMenu="false" field="delivery_city" header="Місто" sortable />
+      <Column :showFilterMenu="false" field="delivery_address" header="Адреса" />
+      <Column :showFilterMenu="false" field="delivery_postcode" header="Зіп код" />
 
-      <Column field="payment_method.name" header="Метод оплати" />
-      <Column class="w-[40px]" header="Оплата">
+      <Column :showFilterMenu="false" field="payment_method.name" header="Метод оплати">
+          <template #filter>
+              <Select v-model="filters.payment_method_id" @click="loadPaymentMethods" :showClear="true" :options="payment_methods"
+                  optionLabel="name" optionValue="id" placeholder="Оберіть метод оплати" class="w-full" />
+          </template>
+      </Column>
+      <Column :showFilterMenu="false" class="w-[40px]" header="Оплата">
         <template #body="{ data }">
           <span v-if="data.is_paid"
             class="rounded flex items-center justify-center p-1 text-white text-xs bg-green-500">
@@ -526,35 +598,35 @@ const duplicateOrder = (orderId) => {
           </span>
         </template>
       </Column>
-      <Column field="delivery_method.name" header="Доставка" />
-      <Column field="tracking_number" header="Трекинг" />
+      <Column :showFilterMenu="false" field="delivery_method.name" header="Доставка" />
+      <Column :showFilterMenu="false" field="tracking_number" header="Трекинг" />
 
-      <Column field="group.name" header="Група" alignFrozen="right" :frozen="frozens.group">
+      <Column :showFilterMenu="false" field="group.name" header="Група" alignFrozen="right" :frozen="frozens.group">
         <template #header>
           <ToggleButton v-model="frozens.group" onLabel="-" offLabel="+" />
         </template>
       </Column>
 
-      <Column field="ip" header="IP" />
-      <Column field="website_referrer" header="Website Reffer" />
+      <Column :showFilterMenu="false" field="ip" header="IP" />
+      <Column :showFilterMenu="false" field="website_referrer" header="Website Reffer" />
 
-      <Column field="utm_source" header="utm_source" alignFrozen="right" :frozen="frozens.utm_source">
+      <Column :showFilterMenu="false" field="utm_source" header="utm_source" alignFrozen="right" :frozen="frozens.utm_source">
         <template #header>
           <ToggleButton v-model="frozens.utm_source" onLabel="-" offLabel="+" />
         </template>
       </Column>
-      <Column field="utm_medium" header="utm_medium" alignFrozen="right" :frozen="frozens.utm_medium" />
-      <Column field="utm_campaign" header="utm_campaign" />
-      <Column field="utm_content" header="utm_content" />
-      <Column field="utm_term" header="utm_term" />
+      <Column :showFilterMenu="false" field="utm_medium" header="utm_medium" alignFrozen="right" :frozen="frozens.utm_medium" />
+      <Column :showFilterMenu="false" field="utm_campaign" header="utm_campaign" />
+      <Column :showFilterMenu="false" field="utm_content" header="utm_content" />
+      <Column :showFilterMenu="false" field="utm_term" header="utm_term" />
 
-      <Column header="created_at" sortable>
+      <Column :showFilterMenu="false" header="created_at" sortable>
         <template #body="{ data }">
           {{ formatDateTime(data.created_at) }}
         </template>
       </Column>
 
-      <Column header="updated_at" sortable>
+      <Column :showFilterMenu="false" header="updated_at" sortable>
         <template #body="{ data }">
           {{ formatDateTime(data.updated_at) }}
         </template>

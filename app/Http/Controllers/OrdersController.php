@@ -27,12 +27,12 @@ class OrdersController extends Controller
         $perPage = min($request->input('per_page', 10), 100);
         $sortBy = $request->input('sort_by', 'created_at');
         $sortDirection = $request->input('sort_direction', 'desc');
-        $statusId = $request->input('status_id');
+        $statusId = $request->input('order_status_id');
         $filters = $request->only(['id', 'delivery_fullname', 'phone', 'ip', 'email']);
         $user = auth()->user();
 
         // Разрешенные поля для сортировки
-        $allowedSortFields = ['id', 'created_at', 'updated_at', 'delivery_fullname', 'phone', 'email', 'delivery_city'];
+        $allowedSortFields = ['id', 'created_at', 'updated_at', 'delivery_fullname', 'phone', 'email', 'delivery_city', 'order_status_id'];
 
         // Проверка сортировки
         if (!in_array($sortBy, $allowedSortFields)) {

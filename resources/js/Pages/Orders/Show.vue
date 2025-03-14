@@ -15,7 +15,8 @@ import {
     PackagePlus,
     FileBox,
     FolderSync,
-    Truck
+    Truck,
+    MessageCirclePlus
 } from "lucide-vue-next";
 import { useConfirm } from "primevue/useconfirm";
 import { lockedOrders } from "../../ably"; // Импортируем список заблокированных заказов
@@ -749,7 +750,7 @@ const openInpostModal = () => {
     
     // Формируем строки для reference и comments с ограничением
     referenceText.value = (order.value.id + "|" + referenceParts.join(";")).substring(0, referenceLimit);
-    commentText.value = (order.value.comment + "|" + commentParts.join(";")).substring(0, commentLimit);
+    commentText.value = (commentParts.join(";")).substring(0, commentLimit);
 
     inpostData.value = {
         sender: {
@@ -1375,7 +1376,7 @@ const copyToClipboard = async (caption) => {
         </div>
 
         <div class="my-4">
-            <Fieldset legend="Історія відправлення" :toggleable="true" :collapsed="false">
+            <Fieldset legend="Історія замовлення" :toggleable="true" :collapsed="false">
                 <Timeline :value="order.fullfull_history">
                     <template #opposite="slotProps">
                         <small class="text-surface-500 dark:text-surface-400">{{ formatDateTime(slotProps.item.created_at) }}</small>
@@ -1885,9 +1886,19 @@ const copyToClipboard = async (caption) => {
                                 <label :class="{'text-red-500': referenceLength >= 100}">Референс ({{ referenceLength }}/100)</label>
                                 <InputText v-model="referenceText" maxlength="100"  class="w-full" />
                             </div>
-                            <div class="mb-4 w-full">
-                                <label :class="{'text-red-500': commentLength >= 100}">Коментар ({{ commentLength }}/100)</label>
-                                <InputText  v-model="commentText" maxlength="100"  class="w-full " />
+                            <div class="mb-4 w-full flex gap-3">
+                                <Button 
+                                    v-if="!commentText.includes('|')" 
+                                    size="small" 
+                                    @click="commentText = order.comment + '|' + commentText" 
+                                    class="mt-6">
+                                    <MessageCirclePlus class="w-6 h-6" />
+                                </Button>
+                                <div class="w-full">
+                                    <label :class="{'text-red-500': commentLength >= 100}">Коментар ({{ commentLength }}/100)</label>
+                                    <InputText  v-model="commentText" maxlength="100"  class="w-full " />
+                                </div>
+                                
                             </div>
                         </Fieldset>
                     </div>

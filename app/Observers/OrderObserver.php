@@ -144,7 +144,7 @@ class OrderObserver
             'shipment_type' => 'ADDRESS',
             'country' => 'PL',
             'city' => $order->delivery_city ?? 'Unknown',
-            'address' => $order->delivery_address ?? 'Unknown',
+            'address' => $order->delivery_address+' '+$order->delivery_address_number ?? 'Unknown',
             'second_address' => $order->delivery_second_address ?? '',
             'products' => $productsArray,
             'comment' => $order->comment ?? '',
