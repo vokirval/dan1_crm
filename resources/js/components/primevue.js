@@ -27,6 +27,9 @@ import ConfirmPopup from 'primevue/confirmpopup';
 import ConfirmationService from 'primevue/confirmationservice';
 import ColorPicker from 'primevue/colorpicker';
 import Inplace from 'primevue/inplace';
+import Toolbar from 'primevue/toolbar';
+
+import Timeline from 'primevue/timeline';
 
 import IftaLabel from 'primevue/iftalabel';
 import Menu from 'primevue/menu';
@@ -139,7 +142,11 @@ export function setupPrimeVue(app) {
     app.component('Fieldset', Fieldset);
     app.component('InputGroup', InputGroup);
     app.component('InputGroupAddon', InputGroupAddon);
+    app.component('Toolbar', Toolbar);
+    app.component('Timeline', Timeline);
 
+    
+    
 
 
 

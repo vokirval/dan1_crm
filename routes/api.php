@@ -4,7 +4,10 @@ use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\OrderController;
+use App\Models\OrderFulfillment;
 use App\Http\Controllers\OrderLockController;
+use Carbon\Carbon;
+
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
@@ -27,6 +30,8 @@ Route::post('/inpost-webhook', function (Request $request) {
         // Ищем заказ по inpost_id (InPost ID)
         $order = Order::where('inpost_id', $webhookData['inpost_id'])->first();
 
+        $alreadySent = OrderFulfillment::where('order_id', $order->id)->where('sent', true)->exists();
+
         if (!$order) {
             Log::warning('Order not found for InPost ID.', ['inpost_id' => $webhookData['inpost_id']]);
             return response()->json([
@@ -36,18 +41,46 @@ Route::post('/inpost-webhook', function (Request $request) {
 
         // Обновляем данные заказа
         $updateData = [];
+        $logMessages = [];
+
         if (!empty($webhookData['tracking_number']) && empty($order->tracking_number)) {
             $updateData['tracking_number'] = $webhookData['tracking_number'];
+            $logMessages[] = 'Додано tracking_number: ' . $webhookData['tracking_number'];
         }
         if (!empty($webhookData['return_tracking_number']) && empty($order->return_tracking_number)) {
             $updateData['return_tracking_number'] = $webhookData['return_tracking_number'];
+            $logMessages[] = 'Додано return_tracking_number: ' . $webhookData['return_tracking_number'];
         }
         if (!empty($webhookData['inpost_status'])) {
             $updateData['inpost_status'] = $webhookData['inpost_status'];
+            $logMessages[] = 'Змінено статус InPost: ' . $webhookData['inpost_status'];
+
+            // Если статус "delivered", записываем дату доставки
+            if (strtolower($webhookData['inpost_status']) === 'delivered') {
+                $updateData['delivery_date'] = Carbon::now()->format('Y-m-d H:i');
+                $logMessages[] = 'Замовлення доставлено, встановлено delivery_date: ' . $updateData['delivery_date'];
+            }
         }
 
         if (!empty($updateData)) {
             $order->update($updateData);
+
+            if ($alreadySent) {
+                OrderFulfillment::create([
+                    'order_id' => $order->id,
+                    'sent' => true,
+                    'comment' => '[Webhook Inpost] Замовлення оновлено: ' . implode('; ', $logMessages),
+                ]);
+            } else {
+                OrderFulfillment::create([
+                    'order_id' => $order->id,
+                    'sent' => false,
+                    'comment' => '[Webhook Inpost] Замовлення оновлено: ' . implode('; ', $logMessages),
+                ]);
+            }
+            
+
+
             Log::info('Order updated from InPost webhook.', ['order_id' => $order->id, 'data' => $updateData]);
         }
 
@@ -57,6 +90,7 @@ Route::post('/inpost-webhook', function (Request $request) {
         ]);
     } catch (\Exception $e) {
         Log::error('Error processing InPost webhook', ['error' => $e->getMessage()]);
+
         return response()->json([
             'message' => 'An error occurred.',
             'error' => $e->getMessage(),

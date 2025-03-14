@@ -651,6 +651,16 @@ const { firstName, lastName } = splitFullName(order.value.delivery_fullname);
 
 const inpostData = ref({});
 
+
+const referenceLimit = 100;
+const commentLimit = 100;
+
+const referenceText = ref(""); 
+const commentText = ref("");
+const referenceLength = computed(() => referenceText.value.length);
+const commentLength = computed(() => commentText.value.length);
+
+
 const openInpostModal = () => {
     // Формируем данные для comment и reference
     const commentParts = [];
@@ -734,6 +744,9 @@ const openInpostModal = () => {
     }
 
     
+    // Формируем строки для reference и comments с ограничением
+    referenceText.value = (order.value.id + "|" + referenceParts.join(";")).substring(0, referenceLimit);
+    commentText.value = (order.value.comment + "|" + commentParts.join(";")).substring(0, commentLimit);
 
     inpostData.value = {
         sender: {
@@ -782,8 +795,8 @@ const openInpostModal = () => {
         },
         additional_services: ["email", "sms"],
         service: "inpost_courier_standard",
-        reference: order.value.id + "|" + referenceParts.join(";"), // Устанавливаем reference
-        comments: order.value.comment + "|" + commentParts.join(";"), // Устанавливаем comment
+        reference: referenceText.value, // Используем обрезанный reference
+        comments: commentText.value, // Используем обрезанный comment
     };
     inpostModalVisible.value = true;
 };
@@ -920,14 +933,7 @@ const copyToClipboard = async (caption) => {
 
     <Head title="Просмотр заказа" />
     <Layout>
-        <div class="bg-[#0f172a] mb-3" v-if="duplicateOrders[0]">
-            <div class="bg-surface-900 text-gray-100 py-4 flex justify-center items-center flex-wrap">
-                <div class="font-bold inline-flex gap-1 items-center">
-                    🔥 Увага! Є дублікати! 🔥
-                    <Button label="Показати" severity="secondary" @click="dialogVisible = true" />
-                </div>
-            </div>
-        </div>
+  
         <!-- 🔥 Выводим ошибки ЧИТАБЕЛЬНО 🔥 -->
         <div v-if="errorMessages.length" class="mt-4 mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
             <h4 class="font-bold">Помилки:</h4>
@@ -949,12 +955,12 @@ const copyToClipboard = async (caption) => {
                 </div>
                 <div v-if="order.tracking_number">
                     <Button type="button" size="small" variant="outlined"
-                        @click="copyToClipboard(order.tracking_number)">Inpost ТТН: {{ order.tracking_number }}
+                        @click="copyToClipboard(order.tracking_number)">ТТН: {{ order.tracking_number }}
                     </Button>
                 </div>
                 <div v-if="order.return_tracking_number">
                     <Button type="button" size="small" variant="outlined"
-                        @click="copyToClipboard(order.return_tracking_number)">Inpost ТТН Повернення: {{
+                        @click="copyToClipboard(order.return_tracking_number)">Зворотна ТТН: {{
                             order.return_tracking_number }}
                     </Button>
                 </div>
@@ -985,8 +991,7 @@ const copyToClipboard = async (caption) => {
                     </IftaLabel>
                     <Button v-if="!order.inpost_id && !order.tracking_number" class="w-full" size="large"
                         @click="openInpostModal">
-                        <Truck class="w-6 h-6" /> Створити замовлення
-                        в InPost
+                        <Truck class="w-6 h-6" /> Створити ТТН в Inpost
                     </Button>
                 </div>
             </div>
@@ -1010,9 +1015,15 @@ const copyToClipboard = async (caption) => {
             <div>
                 <div class="mt-2">
                     <Fieldset legend="Дані клієнта" :toggleable="true" :collapsed="false">
-                        <div class="mb-4">
-                            <label for="fullname">Им`я</label>
-                            <InputText id="fullname" v-model="form.delivery_fullname" class="w-full" />
+                        <div class="mb-4 flex gap-3 items-end">
+                            <div class="w-full">
+                                <label for="fullname">Им`я</label>
+                                <InputText id="fullname" v-model="form.delivery_fullname" class="w-full" />
+                            </div>
+                            <div class="w-full">
+                                
+                                 <Button label="🔥 Увага! Є дублікати! 🔥" @click="dialogVisible = true" class="w-full" />
+                            </div>
                         </div>
                         <div class="mb-4 grid grid-cols-2 gap-3">
                             <div>
@@ -1087,12 +1098,12 @@ const copyToClipboard = async (caption) => {
                     <Fieldset legend="Додаткові поля" :toggleable="true" :collapsed="true">
                         <div class="w-full">
                             <label for="tracking_number">ТТН</label>
-                            <InputText id="tracking_number" v-model="form.tracking_number" class="w-full" />
+                            <InputText id="tracking_number" v-model="form.tracking_number" disabled class="w-full" />
                         </div>
                         <IftaLabel class="mt-5">
                             <DatePicker id="delivery_date" dateFormat="yy-mm-dd" v-model="form.delivery_date" showTime
                                 hourFormat="24" fluid />
-                            <label for="delivery_date">Дата отримання посилки клієнтом</label>
+                            <label for="delivery_date">Дата отримання клієнтом</label>
                         </IftaLabel>
                         <div class="mt-5 flex gap-3">
                             <IftaLabel class="w-full">
@@ -1129,7 +1140,7 @@ const copyToClipboard = async (caption) => {
                             </IftaLabel>
 
                             <IftaLabel class="w-full">
-                                <DatePicker id="payment_date" dateFormat="yy-mm-dd" v-model="form.payment_date" showTime
+                                <DatePicker id="payment_date" dateFormat="yy-mm-dd"  v-model="form.payment_date" showTime
                                     hourFormat="24" fluid />
                                 <label for="payment_date">Дата онлайн оплати</label>
                             </IftaLabel>
@@ -1359,6 +1370,23 @@ const copyToClipboard = async (caption) => {
                 </table>
             </Fieldset>
         </div>
+
+        <div class="my-4">
+            <Fieldset legend="Історія відправлення" :toggleable="true" :collapsed="false">
+                <Timeline :value="order.fullfull_history">
+                    <template #opposite="slotProps">
+                        <small class="text-surface-500 dark:text-surface-400">{{ formatDateTime(slotProps.item.created_at) }}</small>
+                    </template>
+                    <template #content="slotProps">
+                        {{slotProps.item.comment}}
+                    </template>
+                </Timeline>
+            </Fieldset>
+        </div>
+
+
+
+        
 
         <Dialog v-model:visible="dialogVisible" header="Дублікати замовлення" :style="{ width: '75vw' }" maximizable
             modal :contentStyle="{ height: '100vh' }">
@@ -1851,20 +1879,19 @@ const copyToClipboard = async (caption) => {
                     <div class="mt-2">
                         <Fieldset legend="Додаткові поля" :toggleable="true" :collapsed="false">
                             <div class="mb-4 w-full">
-                                <label>Референс</label>
-                                <InputText v-model="inpostData.reference" class="w-full" />
+                                <label :class="{'text-red-500': referenceLength >= 100}">Референс ({{ referenceLength }}/100)</label>
+                                <InputText v-model="referenceText" maxlength="100"  class="w-full" />
                             </div>
                             <div class="mb-4 w-full">
-                                <label>Коментар</label>
-                                <InputText v-model="inpostData.comments" class="w-full" />
+                                <label :class="{'text-red-500': commentLength >= 100}">Коментар ({{ commentLength }}/100)</label>
+                                <InputText  v-model="commentText" maxlength="100"  class="w-full " />
                             </div>
                         </Fieldset>
                     </div>
 
 
                     <Button class="mt-4 w-full" size="large" @click="sendToInpost">
-                        <Truck class="w-6 h-6" /> Створити замовлення
-                        в InPost
+                        <Truck class="w-6 h-6" /> Створити ТТН в Inpost
                     </Button>
 
                 </div>

@@ -23,6 +23,7 @@ class OrdersController extends Controller
      */
     public function index(Request $request)
     {
+
         $perPage = min($request->input('per_page', 10), 100);
         $sortBy = $request->input('sort_by', 'created_at');
         $sortDirection = $request->input('sort_direction', 'desc');
@@ -219,6 +220,7 @@ class OrdersController extends Controller
                 'items.productVariation.product:name,category_id,short_name,weight,length,width,height,id',
                 'items.productVariation.product.category:id,name',
                 'items.productVariation.attributes',
+                'fullfullHistory',
                 'emailHistory' // Подгружаем историю писем
             ])->findOrFail($id);
         } else {
@@ -235,6 +237,7 @@ class OrdersController extends Controller
                     'items.productVariation.product:name,category_id,short_name,weight,length,width,height,id',
                     'items.productVariation.product.category:id,name',
                     'items.productVariation.attributes',
+                    'fullfullHistory',
                     'emailHistory' // Подгружаем историю писем
                 ])
                 ->findOrFail($id);
@@ -286,6 +289,7 @@ class OrdersController extends Controller
      */
     public function update(Request $request, $id)
     {
+        
         $order = Order::findOrFail($id);
 
         // Проверяем, заблокирован ли заказ в `order_locks` и другим ли пользователем
@@ -584,6 +588,46 @@ class OrdersController extends Controller
             ], 500);
         }
     }
+
+
+    public function duplicateOrder($id)
+    {
+        $order = Order::findOrFail($id);
+
+        // Дублируем заказ без данных InPost
+        $newOrder = $order->replicate([
+            'tracking_number',
+            'return_tracking_number',
+            'inpost_id',
+            'inpost_status'
+        ]);
+        
+        // Убираем ненужные поля
+        $newOrder->tracking_number = null;
+        $newOrder->return_tracking_number = null;
+        $newOrder->inpost_id = null;
+        $newOrder->inpost_status = null;
+
+        // Добавляем " (Копія)" к имени получателя, чтобы различать
+        $newOrder->delivery_fullname = $order->delivery_fullname . " (Копія)";
+
+        // Сохраняем новый заказ
+        $newOrder->save();
+
+        // Дублируем товары заказа
+        foreach ($order->items as $item) {
+            $newOrder->items()->create([
+                'product_id' => $item->product_id,
+                'product_variation_id' => $item->product_variation_id,
+                'quantity' => $item->quantity,
+                'price' => $item->price,
+                'subtotal' => $item->subtotal,
+            ]);
+        }
+
+        return redirect()->route('orders.index')->with('success', 'Замовлення успішно продубльоване.');
+    }
+
 
 
 

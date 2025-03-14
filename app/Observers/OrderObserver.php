@@ -41,6 +41,26 @@ class OrderObserver
             return;
         }
 
+        // Проверяем наличие tracking_number и inpost_id
+        if (empty($order->tracking_number) || empty($order->inpost_id)) {
+            // Переводим заказ в статус ошибки
+            $order->update(['order_status_id' => 12]);
+
+            OrderFulfillment::create([
+                'order_id' => $order->id,
+                'sent' => false,
+                'comment' => 'Відсутній ТТН або Інпост Айді. Замовлення не відправлено в фуллфілмент.',
+            ]);
+
+            \Log::warning('Order not sent: missing tracking_number or inpost_id', [
+                'order_id' => $order->id,
+                'tracking_number' => $order->tracking_number,
+                'inpost_id' => $order->inpost_id,
+            ]);
+
+            return;
+        }
+
         // Проверяем валидность email
         if (!filter_var($order->email, FILTER_VALIDATE_EMAIL)) {
             // Если email невалидный, переводим заказ в статус "с ошибками" (например, статус 12)
@@ -48,7 +68,7 @@ class OrderObserver
             OrderFulfillment::create([
                 'order_id' => $order->id,
                 'sent' => false,
-                'comment' => 'Invalid email address.',
+                'comment' => 'Помилка Email адреси.',
             ]);
             \Log::warning('Order not sent: invalid email address', ['order_id' => $order->id, 'email' => $order->email]);
             return;
@@ -61,7 +81,7 @@ class OrderObserver
             OrderFulfillment::create([
                 'order_id' => $order->id,
                 'sent' => false,
-                'comment' => 'Order not sent: payment not completed for non-COD method.',
+                'comment' => 'Замовлення не відправлено, оскільки метод оплати не дорівнює COD і замовлення не оплачене.',
             ]);
             \Log::warning('Order not sent to Panel Expansion: payment not completed for non-COD method.', ['order_id' => $order->id]);
             return;
@@ -100,7 +120,7 @@ class OrderObserver
             OrderFulfillment::create([
                 'order_id' => $order->id,
                 'sent' => false,
-                'comment' => 'Missing surname in delivery_fullname.',
+                'comment' => 'Відсутня фамілія в імені.',
             ]);
             \Log::warning('Order not sent: missing surname', ['order_id' => $order->id]);
             return;
@@ -129,7 +149,9 @@ class OrderObserver
             'products' => $productsArray,
             'comment' => $order->comment ?? '',
             'postal_office' => $order->delivery_postcode ?? 'Unknown',
-            'currency' => 'PLN'
+            'currency' => 'PLN',
+            'inpost_shipping_id' => $order->inpost_id,
+            'invoice_number' => $order->tracking_number,
         ];
 
             $apiToken = env('PANEL_EXPANSION_API_TOKEN');
@@ -144,7 +166,7 @@ class OrderObserver
                 OrderFulfillment::create([
                     'order_id' => $order->id,
                     'sent' => true,
-                    'comment' => 'Order successfully sent to fulfillment.',
+                    'comment' => 'Ордер успішно відправлено в фулфілмент.',
                 ]);
     
                 \Log::info('Order sent to Panel Expansion', [
@@ -157,7 +179,7 @@ class OrderObserver
                 OrderFulfillment::create([
                     'order_id' => $order->id,
                     'sent' => false,
-                    'comment' => 'Failed to send order: ' . $response->body(),
+                    'comment' => 'Виникла помилка: ' . $response->body(),
                 ]);
 
                 throw new \Exception('Failed to send order: ' . $response->body());
@@ -169,7 +191,7 @@ class OrderObserver
            OrderFulfillment::create([
                 'order_id' => $order->id,
                 'sent' => false,
-                'comment' => 'Error sending order: ' . $e->getMessage(),
+                'comment' => 'Виникла помилка: ' . $e->getMessage(),
             ]);
 
 

@@ -98,6 +98,7 @@ Route::middleware(['auth'])->group(function() {
         Route::delete('/{orderId}/items/{itemId}', [OrdersController::class, 'removeOrderItem'])->name('orders.items.destroy')->middleware('permission:Видалення замовлень');
         
         Route::post('/{id}/create-inpost', [OrdersController::class, 'createInpostOrder'])->name('orders.createInpost');
+        Route::post('/{id}/duplicate', [OrdersController::class, 'duplicateOrder'])->name('orders.duplicate');
 
 
     });

@@ -89,6 +89,11 @@ class Order extends Model
         return $this->hasMany(EmailHistory::class);
     }
 
+    public function fullfullHistory()
+    {
+        return $this->hasMany(OrderFulfillment::class);
+    }
+
     public function getMacros(): array
 {
     // Генерируем HTML-таблицу с товарами
