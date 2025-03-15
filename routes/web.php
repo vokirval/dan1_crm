@@ -66,6 +66,9 @@ Route::middleware(['auth'])->group(function() {
 
         //products
         Route::get('/', [ProductsController::class, 'index'])->middleware('permission:Перегляд продуктів');
+        Route::get('/getall', [ProductsController::class, 'getAll'])->middleware('permission:Перегляд продуктів');
+        Route::get('/{id}/variations', [ProductsController::class, 'getVariations'])->middleware('permission:Перегляд продуктів');
+
         Route::post('/', [ProductsController::class, 'store'])->middleware('permission:Створення продуктів');
 
         Route::get('/{id}', [ProductsController::class, 'single'])->middleware('permission:Перегляд продуктів');
@@ -112,7 +115,7 @@ Route::middleware(['auth'])->group(function() {
 
     Route::prefix('/payment-methods')->group(function () {
         Route::get('/', [PaymentMethodController::class, 'index'])->name('payment-methods.index')->middleware('permission:Перегляд методів оплат');
-        Route::get('/getall', [PaymentMethodController::class, 'getall'])->name('payment-methods.getall')->middleware('permission:Перегляд методів оплат');
+        Route::get('/getall', action: [PaymentMethodController::class, 'getall'])->name('payment-methods.getall')->middleware('permission:Перегляд методів оплат');
         Route::post('/', [PaymentMethodController::class, 'store'])->name('payment-methods.store')->middleware('permission:Створення методів оплат');
         Route::put('/{id}', [PaymentMethodController::class, 'update'])->name('payment-methods.update')->middleware('permission:Редагування методів оплат');
         Route::delete('/{id}', [PaymentMethodController::class, 'destroy'])->name('payment-methods.destroy')->middleware('permission:Видалення методів оплат');
@@ -120,6 +123,7 @@ Route::middleware(['auth'])->group(function() {
 
     Route::prefix('/delivery-methods')->group(function () {
         Route::get('/', [DeliveryMethodController::class, 'index'])->name('delivery-methods.index')->middleware('permission:Перегляд методів доставки');
+        Route::get('/getall', [DeliveryMethodController::class, 'getall'])->name('delivery-methods.getall')->middleware('permission:Перегляд методів доставки');
         Route::post('/', [DeliveryMethodController::class, 'store'])->name('delivery-methods.store')->middleware('permission:Створення методів доставки');
         Route::put('/{id}', [DeliveryMethodController::class, 'update'])->name('delivery-methods.update')->middleware('permission:Редагування методів доставки');
         Route::delete('/{id}', [DeliveryMethodController::class, 'destroy'])->name('delivery-methods.destroy')->middleware('permission:Видалення методів доставки');
@@ -127,6 +131,7 @@ Route::middleware(['auth'])->group(function() {
 
     Route::prefix('/groups')->group(function () {
         Route::get('/', [GroupController::class, 'index'])->middleware('permission:Перегляд груп');
+        Route::get('/getall', [GroupController::class, 'getall'])->middleware('permission:Перегляд груп');
         Route::post('/', [GroupController::class, 'store'])->middleware('permission:Створення груп');
         Route::put('/{id}', [GroupController::class, 'update'])->middleware('permission:Редагування груп');
         Route::delete('/{id}', [GroupController::class, 'destroy'])->middleware('permission:Видалення груп');

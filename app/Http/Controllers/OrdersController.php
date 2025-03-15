@@ -28,8 +28,8 @@ class OrdersController extends Controller
         $sortBy = $request->input('sort_by', 'created_at');
         $sortDirection = $request->input('sort_direction', 'desc');
         $statusId = $request->input('order_status_id');
-        $filters = $request->only(['id', 'delivery_fullname', 'phone', 'email', 'comment', 'delivery_city', 'ip' ]);
-        $strongFilters = $request->only(['order_status_id','responsible_user_id','payment_method_id', 'is_paid']);
+        $filters = $request->only(['id', 'delivery_fullname', 'phone', 'email', 'comment', 'delivery_city', 'tracking_number', 'ip', 'website_referrer', 'utm_source', 'utm_medium', 'utm_campaign','utm_content', 'utm_term']);
+        $strongFilters = $request->only(['order_status_id','responsible_user_id','payment_method_id', 'is_paid', 'delivery_method_id', 'group_id']);
         $user = auth()->user();
 
         // Разрешенные поля для сортировки
@@ -65,6 +65,38 @@ class OrdersController extends Controller
                 $ordersQuery->where($key, $value);
             }
         }
+
+        // Фильтр по дате (только по Y-m-d)
+        if ($request->has('created_at_from')) {
+            $ordersQuery->whereDate('created_at', '>=', $request->input('created_at_from'));
+        }
+        if ($request->has('created_at_to')) {
+            $ordersQuery->whereDate('created_at', '<=', $request->input('created_at_to'));
+        }
+
+        if ($request->has('updated_at_from')) {
+            $ordersQuery->whereDate('updated_at', '>=', $request->input('updated_at_from'));
+        }
+        if ($request->has('updated_at_to')) {
+            $ordersQuery->whereDate('updated_at', '<=', $request->input('updated_at_to'));
+        }
+
+        if ($request->has('product_id')) {
+            $ordersQuery->whereHas('items', function ($query) use ($request) {
+                $query->where('product_id', $request->input('product_id'))
+                      ->orWhereHas('productVariation', function ($subQuery) use ($request) {
+                          $subQuery->where('product_id', $request->input('product_id'));
+                      });
+            });
+        }
+        
+        if ($request->has('variation_id')) {
+            $ordersQuery->whereHas('items', function ($query) use ($request) {
+                $query->where('product_variation_id', $request->input('variation_id'));
+            });
+        }
+        
+
         
 
         // Применяем сортировку и пагинацию
@@ -115,6 +147,7 @@ class OrdersController extends Controller
         ]);
     }
 
+ 
     /**
      * Показать форму для создания нового заказа.
      */

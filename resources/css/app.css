@@ -92,3 +92,9 @@ body {
     padding: 0.3rem 0.3rem!important;
    
 }
+.p-datatable .p-datatable-tbody tr td {
+    user-select: text !important; /* Разрешаем выделение текста */
+    -webkit-user-select: text !important; /* Для Webkit-браузеров */
+    -moz-user-select: text !important; /* Для Firefox */
+    -ms-user-select: text !important; /* Для IE/Edge */
+  }

@@ -29,6 +29,16 @@ class GroupController extends Controller
         ]);
     }
 
+    public function getall(Request $request)
+    {
+ 
+        $groups = Group::all();
+    
+        return response()->json([
+            'groups' => $groups,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

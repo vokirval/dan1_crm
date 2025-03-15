@@ -12,15 +12,15 @@ axios.defaults.withCredentials = true;
 
 const users = ref([]);
 const payment_methods = ref([]);
+const delivery_methods = ref([]);
+const groups = ref([]);
+const products = ref([]);
+const variations = ref([]);
 
 const page = usePage();
 const toast = useToast();
 const confirm = useConfirm();
 
-const frozens = ref({
-  'utm_source': false,
-  'group': false
-});
 
 const filters = ref({
   id: "",
@@ -33,8 +33,16 @@ const filters = ref({
   delivery_city: "",
   payment_method_id: null,
   is_paid: "",
-  ip: "",
   delivery_method_id: null,
+  tracking_number: "",
+  group_id: null,
+  ip: "",
+  website_referrer: "",
+  utm_source: "",
+  utm_medium: "",
+  utm_campaign: "",
+  utm_content: "",
+  utm_term: "",
   created_at: null,
   updated_at: null
 });
@@ -44,7 +52,6 @@ const { props: inertiaProps } = usePage();
 console.log(inertiaProps);
 const orders = ref(inertiaProps.data || []);
 const statuses = inertiaProps.statuses || [];
-const currentStatusId = ref(inertiaProps.currentStatusId || null);
 const isLoading = ref(false);
 const fetchRoute = "/orders";
 const perPage = ref(orders.value.per_page || 10);
@@ -55,8 +62,6 @@ const visible = ref(false);
 const selectedOrder = ref(null);
 
 const selectedStatus = ref(null); // Храним выбранный статус
-const popupRef = ref(null); // Ссылка на ConfirmPopup
-const actionType = ref(''); // Тип действия (удаление, изменение статуса, комментарий)
 const actionData = ref(null); // Данные для действия (например, статус или комментарий)
 const commentDialog = ref(null);
 
@@ -66,7 +71,6 @@ const openOrderDialog = (event) => {
   selectedOrder.value = event.data; // Передаем модель заказа
   visible.value = true;
 };
-
 
 
 const onPageChange = (event) => {
@@ -81,23 +85,58 @@ const onSortChange = (event) => {
   loadOrders();
 };
 
+const formatDateForApi = (date) => {
+  if (!date) return null;
+
+  // Если дата — это строка, преобразуем её в объект Date
+  if (typeof date === "string") {
+    date = new Date(date.replace(" ", "T"));
+  }
+
+  // Проверяем, является ли дата объектом Date
+  if (!(date instanceof Date) || isNaN(date.getTime())) {
+    throw new TypeError("Invalid date provided");
+  }
+
+  // Преобразуем в локальное время (учитывая часовой пояс)
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+
+  const pad = (num) => String(num).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate()
+  )}`;
+};
+
+
 const loadOrders = () => {
   isLoading.value = true;
 
-  // Убираем пустые параметры фильтрации
-  const activeFilters = Object.fromEntries(
-    Object.entries(filters.value).filter(([_, v]) => v !== "" && v !== null)
-  );
+  let activeFilters = { ...filters.value };
+  delete activeFilters.created_at;
+  delete activeFilters.updated_at;
+
+  // Если даты выбраны, форматируем их в Y-m-d
+  if (filters.value.created_at?.length === 2) {
+    activeFilters.created_at_from = formatDateForApi(filters.value.created_at[0]);
+    activeFilters.created_at_to = formatDateForApi(filters.value.created_at[1]);
+  }
+
+  if (filters.value.updated_at?.length === 2) {
+    activeFilters.updated_at_from = formatDateForApi(filters.value.updated_at[0]);
+    activeFilters.updated_at_to = formatDateForApi(filters.value.updated_at[1]);
+  }
+
+  // Убираем пустые параметры
+  activeFilters = Object.fromEntries(Object.entries(activeFilters).filter(([_, v]) => v !== "" && v !== null));
 
   router.get(
     fetchRoute,
     {
-      page: currentPage.value,
+      ...activeFilters,
       per_page: perPage.value,
+      page: currentPage.value,
       sort_by: sortBy.value,
       sort_direction: sortDirection.value,
-      order_status_id: currentStatusId.value,
-      ...activeFilters, // Передаем только активные фильтры
     },
     {
       preserveState: true,
@@ -118,18 +157,26 @@ const resetFilters = () => {
     id: "",
     delivery_fullname: "",
     phone: "",
-    ip: "",
     email: "",
     comment: "",
     responsible_user_id: "",
     delivery_city: "",
     payment_method_id: "",
     is_paid: "",
+    delivery_method_id: "",
+    tracking_number: "",
+    group_id: "",
+    ip: "",
+    website_referrer: "",
+    utm_source: "",
+    utm_medium: "",
+    utm_campaign: "",
+    utm_content: "",
+    utm_term: "",
   };
   selectedProduct.value = []
   sortBy.value = "created_at";
   sortDirection.value = "desc";
-  currentStatusId.value = "";
   loadOrders();
 };
 
@@ -139,15 +186,25 @@ onMounted(() => {
     id: inertiaProps.filters.id || "",
     delivery_fullname: inertiaProps.filters.delivery_fullname || "",
     phone: inertiaProps.filters.phone || "",
-    ip: inertiaProps.filters.ip || "",
     email: inertiaProps.filters.email || "",
     comment: inertiaProps.filters.comment || "",
     responsible_user_id: inertiaProps.filters.responsible_user_id || "",
     delivery_city: inertiaProps.filters.delivery_city || "",
     payment_method_id: inertiaProps.filters.payment_method_id || "",
     is_paid: inertiaProps.filters.is_paid || "",
-    
+    delivery_method_id: inertiaProps.filters.delivery_method_id || "",
+    tracking_number: inertiaProps.filters.tracking_number || "",
+    group_id: inertiaProps.filters.group_id || "",
+    ip: inertiaProps.filters.ip || "",
+    website_referrer: inertiaProps.filters.website_referrer || "",
+    utm_source: inertiaProps.filters.utm_source || "",
+    utm_medium: inertiaProps.filters.utm_medium || "",
+    utm_campaign: inertiaProps.filters.utm_campaign || "",
+    utm_content: inertiaProps.filters.utm_content || "",
+    utm_term: inertiaProps.filters.utm_term || "",
+
   };
+
 });
 
 
@@ -170,7 +227,6 @@ const formatDateTime = (date) => {
   if (!date) return "-";
 
   return new Intl.DateTimeFormat("pl-PL", {
-    timeZone: "Europe/Warsaw",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -182,7 +238,7 @@ const formatDateTime = (date) => {
 
 
 const filterByStatus = (statusId) => {
-  currentStatusId.value = statusId;
+  filters.value.order_status_id = statusId;
   loadOrders();
 };
 
@@ -387,6 +443,46 @@ const loadPaymentMethods = () => {
   });
 };
 
+const loadDeliveryMethods = () => {
+  if (delivery_methods.value.length > 0) {
+    return;
+  }
+  axios.get('/delivery-methods/getall').then(response => {
+    delivery_methods.value = response.data.delivery_methods;
+  });
+};
+
+const loadGroups = () => {
+  if (groups.value.length > 0) {
+    return;
+  }
+  axios.get('/groups/getall').then(response => {
+    groups.value = response.data.groups;
+  });
+};
+
+
+// Загружаем товары
+const loadProducts = () => {
+  if (products.value.length > 0) return; // Если уже загружены, не запрашиваем снова
+  axios.get('/products/getall').then(response => {
+    products.value = response.data.products;
+  });
+};
+
+// Загружаем вариации при выборе товара
+const loadVariations = () => {
+  variations.value = [];
+  filters.value.variation_id = null; // Сбрасываем вариацию, если товар изменился
+
+  if (!filters.value.product_id) return; // Если товар не выбран – ничего не делаем
+
+  axios.get(`/products/${filters.value.product_id}/variations`).then(response => {
+    variations.value = response.data.variations;
+  });
+};
+
+
 const getTooltipText = (items) => {
   return items.map(item => {
     const productName = item.product?.name || item.product_variation?.product?.name || "Товар не знайдено";
@@ -409,12 +505,12 @@ const getTooltipText = (items) => {
   [&::-webkit-scrollbar-track]:rounded-full
   [&::-webkit-scrollbar-thumb]:rounded-full">
       <div class="rounded p-2 text-white min-w-[150px] bg-[#020617] cursor-pointer hover:scale-105 hover:shadow-sm"
-        :class="{ 'font-medium': !currentStatusId }" @click="filterByStatus(null)">
+        :class="{ 'font-medium': !filters.order_status_id }" @click="filterByStatus(null)">
         Всі замовлення
       </div>
       <div v-for="status in statuses" :key="status.id"
         class="rounded p-2 text-white min-w-[150px] cursor-pointer hover:scale-105 hover:shadow-sm"
-        :class="{ 'font-medium': currentStatusId === status.id }" :style="{ backgroundColor: `#${status.color}` }"
+        :class="{ 'font-medium': filters.order_status_id === status.id }" :style="{ backgroundColor: `#${status.color}` }"
         @click="filterByStatus(status.id)">
         {{ status.name }} ({{ status.orders_count }})
       </div>
@@ -432,7 +528,7 @@ const getTooltipText = (items) => {
 
 
           <Button class=" ml-3" outlined @click="selectedProduct = []">Вибрано: <b>{{ selectedProduct.length
-          }}</b></Button>
+              }}</b></Button>
 
           <!-- Дублирование заказа -->
           <Button class=" ml-3" severity="secondary" v-if="selectedProduct.length === 1"
@@ -495,12 +591,13 @@ const getTooltipText = (items) => {
       showGridlines :paginator="true" :rows="perPage" :rows-per-page-options="[10, 20, 50, 100]"
       :first="(currentPage - 1) * perPage" :total-records="orders.total" :lazy="true" :sort-field="sortBy"
       :sort-order="sortDirection === 'asc' ? 1 : -1" @page="onPageChange" @sort="onSortChange" dataKey="id" scrollable
-      @row-dblclick="openOrderDialog" size="small" filterDisplay="row" selectionMode="multiple" 
+      @row-dblclick="openOrderDialog" size="small" filterDisplay="row" selectionMode="multiple"
       :class="{ 'blur-sm pointer-events-none': isLoading }" :rowClass="rowClass">
       <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-      <Column field="id" header="ID" sortable :showFilterMenu="false" bodyStyle="text-align:center" style="min-width:50px;">
+      <Column field="id" header="ID" sortable :showFilterMenu="false" bodyStyle="text-align:center"
+        style="min-width:50px;">
         <template #filter>
-          <InputText v-model="filters.id" placeholder="ID" class="w-full" />
+          <InputText v-model="filters.id" placeholder="ID" class="w-full" type="search" size="small" />
         </template>
       </Column>
       <Column :showFilterMenu="false" class="w-[40px]" header="Статус" sortField="order_status_id" :sortable="true">
@@ -514,40 +611,43 @@ const getTooltipText = (items) => {
           </span>
         </template>
         <template #filter>
-          <Select v-model="filters.order_status_id" optionValue="id" :options="statuses" optionLabel="name"
-            :showClear="true" placeholder="Статус" class="w-full" />
+          <Select v-model="filters.order_status_id" optionValue="id" size="small" :options="statuses" optionLabel="name"
+            :showClear="!!filters.order_status_id" filter filterPlaceholder="Пошук..." placeholder="Статус"
+            class="w-full" />
         </template>
       </Column>
 
       <Column :showFilterMenu="false" field="delivery_fullname" header="Контакт" sortable>
         <template #filter>
-          <InputText v-model="filters.delivery_fullname" placeholder="Ім'я або Фамілія" class="w-full" />
+          <InputText type="search" v-model="filters.delivery_fullname" placeholder="Ім'я або Фамілія" class="w-full" size="small" />
         </template>
       </Column>
       <Column :showFilterMenu="false" field="phone" header="Телефон" sortable>
         <template #filter>
-          <InputText v-model="filters.phone" placeholder="Телефон" class="w-full" />
+          <InputText type="search" v-model="filters.phone" placeholder="Телефон" class="w-full" size="small" />
         </template>
       </Column>
       <Column :showFilterMenu="false" field="email" header="Email" sortable>
         <template #filter>
-          <InputText v-model="filters.email" placeholder="Email" class="w-full" />
+          <InputText type="search" v-model="filters.email" placeholder="Email" class="w-full" size="small" />
         </template>
       </Column>
       <Column :showFilterMenu="false" field="comment" header="Коментар" bodyClass="cursor-help"
         bodyStyle="max-width:250px">
         <template #filter>
-          <InputText v-model="filters.comment" placeholder="Коментар" class="w-full" />
+          <InputText type="search" v-model="filters.comment" placeholder="Коментар" class="w-full" size="small" />
         </template>
         <template #body="{ data }">
-          <div class="w-full h-full truncate" v-tooltip.top="{ value: data.comment, showDelay: 1000, hideDelay: 300, class: 'text-sm' }">{{
-            data.comment }}</div>
+          <div class="w-full h-full truncate"
+            v-tooltip.top="{ value: data.comment, showDelay: 1000, hideDelay: 300, class: 'text-sm' }">{{
+              data.comment }}</div>
         </template>
       </Column>
 
-      <Column :showFilterMenu="false" header="Товари" bodyStyle="max-width:200px">
+      <Column :showFilterMenu="false" header="Товари" bodyStyle="max-width:300px">
         <template #body="{ data }">
-          <div v-if="data.items.length > 0" v-tooltip.top="{ value: getTooltipText(data.items), showDelay: 500, hideDelay: 300, escape:false, class: 'text-sm custom-tooltip ',  }">
+          <div v-if="data.items.length > 0"
+            v-tooltip.top="{ value: getTooltipText(data.items), showDelay: 500, hideDelay: 300, escape: false, class: 'text-sm custom-tooltip ', }">
             <!-- Первый товар -->
             <div class="text-sm truncate">
               <span v-if="data.items[0].product_id">
@@ -566,21 +666,35 @@ const getTooltipText = (items) => {
               | {{ data.items[0].price }}
             </div>
 
-           
+
           </div>
+        </template>
+        <template #filter>
+          <div class="flex gap-2">
+            <!-- Фильтр по товарам -->
+            <Select v-model="filters.product_id" optionValue="id" :options="products"
+                optionLabel="name" :showClear="!!filters.product_id" size="small" filter filterPlaceholder="Пошук..."
+                placeholder="Товар" class="w-full" @click="loadProducts" @update:modelValue="loadVariations" />
+
+            <!-- Фильтр по вариациям (загружаются после выбора товара) -->
+            <Select v-model="filters.variation_id" optionValue="id" v-if="filters.product_id" :options="variations"
+                optionLabel="name" :showClear="!!filters.variation_id" size="small" filter filterPlaceholder="Пошук..."
+                placeholder="Варіація" class="w-full" />
+              </div>
         </template>
       </Column>
 
       <Column :showFilterMenu="false" field="responsible_user.name" header="Відповідальний">
         <template #filter>
-          <Select v-model="filters.responsible_user_id" @click="loadUsers" :options="users" :showClear="true"
-            optionLabel="name" optionValue="id" placeholder="Відповідальний" class="w-full" />
+          <Select v-model="filters.responsible_user_id" @click="loadUsers" :options="users"
+            :showClear="!!filters.responsible_user_id" size="small" filter filterPlaceholder="Пошук..." optionLabel="name"
+            optionValue="id" placeholder="Відповідальний" class="w-full" />
         </template>
       </Column>
 
       <Column :showFilterMenu="false" field="delivery_city" header="Місто" sortable>
         <template #filter>
-          <InputText v-model="filters.delivery_city" placeholder="Місто" class="w-full" />
+          <InputText type="search" v-model="filters.delivery_city" placeholder="Місто" class="w-full" size="small" />
         </template>
       </Column>
       <Column :showFilterMenu="false" field="delivery_address" header="Адреса" />
@@ -588,19 +702,19 @@ const getTooltipText = (items) => {
 
       <Column :showFilterMenu="false" field="payment_method.name" header="Метод оплати">
         <template #filter>
-          <Select v-model="filters.payment_method_id" @click="loadPaymentMethods" :showClear="true"
-            :options="payment_methods" optionLabel="name" optionValue="id" placeholder="Метод оплати"
-            class="w-full" />
+          <Select v-model="filters.payment_method_id" @click="loadPaymentMethods"
+            :showClear="!!filters.payment_method_id" size="small" filter filterPlaceholder="Пошук..." :options="payment_methods"
+            optionLabel="name" optionValue="id" placeholder="Метод оплати" class="w-full" />
         </template>
       </Column>
       <Column :showFilterMenu="false" class="w-[40px]" header="Оплата" sortable field="is_paid">
         <template #filter>
-          <Select optionLabel="label" optionValue="value" class="w-full" v-model="filters.is_paid" :showClear="true" placeholder="Оплата"
-            :options="[
-                { label: 'Так', value: 1 },
-                { label: 'Ні', value: 0 },
+          <Select optionLabel="label" optionValue="value" class="w-full" v-model="filters.is_paid"
+            :showClear="!!filters.is_paid" size="small" filter filterPlaceholder="Пошук..." placeholder="Оплата" :options="[
+              { label: 'Так', value: 1 },
+              { label: 'Ні', value: 0 },
             ]" />
-   
+
         </template>
         <template #body="{ data }">
           <span v-if="data.is_paid"
@@ -612,39 +726,85 @@ const getTooltipText = (items) => {
           </span>
         </template>
       </Column>
-      <Column :showFilterMenu="false" field="delivery_method.name" header="Доставка" />
-      <Column :showFilterMenu="false" field="tracking_number" header="Трекинг" />
-
-      <Column :showFilterMenu="false" field="group.name" header="Група" alignFrozen="right" :frozen="frozens.group">
-        <template #header>
-          <ToggleButton v-model="frozens.group" onLabel="-" offLabel="+" />
+      <Column :showFilterMenu="false" field="delivery_method.name" header="Доставка">
+        <template #filter>
+          <Select v-model="filters.delivery_method_id" @click="loadDeliveryMethods"
+            :showClear="!!filters.delivery_method_id" size="small" filter filterPlaceholder="Пошук..." :options="delivery_methods"
+            optionLabel="name" optionValue="id" placeholder="Доставка" class="w-full" />
+        </template>
+      </Column>
+      <Column :showFilterMenu="false" field="tracking_number" header="Трекинг" sortable>
+        <template #filter>
+          <InputText type="search" v-model="filters.tracking_number" placeholder="Трекинг" class="w-full" size="small" />
         </template>
       </Column>
 
-      <Column :showFilterMenu="false" field="ip" header="IP" />
-      <Column :showFilterMenu="false" field="website_referrer" header="Website Reffer" />
 
-      <Column :showFilterMenu="false" field="utm_source" header="utm_source" alignFrozen="right"
-        :frozen="frozens.utm_source">
-        <template #header>
-          <ToggleButton v-model="frozens.utm_source" onLabel="-" offLabel="+" />
+      <Column :showFilterMenu="false" field="group.name" header="Група">
+        <template #filter>
+          <Select v-model="filters.group_id" @click="loadGroups" :showClear="!!filters.group_id" size="small" filter
+            filterPlaceholder="Пошук..." :options="groups" optionLabel="name" optionValue="id" placeholder="Група"
+            class="w-full" />
         </template>
       </Column>
-      <Column :showFilterMenu="false" field="utm_medium" header="utm_medium" alignFrozen="right"
-        :frozen="frozens.utm_medium" />
-      <Column :showFilterMenu="false" field="utm_campaign" header="utm_campaign" />
-      <Column :showFilterMenu="false" field="utm_content" header="utm_content" />
-      <Column :showFilterMenu="false" field="utm_term" header="utm_term" />
+
+      <Column :showFilterMenu="false" field="ip" header="IP" sortable>
+        <template #filter>
+          <InputText type="search" v-model="filters.ip" placeholder="IP" class="w-full" size="small" />
+        </template>
+      </Column>
+
+      <Column :showFilterMenu="false" field="website_referrer" header="Website Reffer" sortable>
+        <template #filter>
+          <InputText type="search" v-model="filters.website_referrer" placeholder="Website Reffer" class="w-full" size="small" />
+        </template>
+      </Column>
+
+      <Column :showFilterMenu="false" field="utm_source" header="utm_source" sortable>
+        <template #filter>
+          <InputText type="search" v-model="filters.utm_source" placeholder="utm_source" class="w-full" size="small" />
+        </template>
+      </Column>
+      <Column :showFilterMenu="false" field="utm_medium" header="utm_medium" sortable>
+        <template #filter>
+          <InputText type="search" v-model="filters.utm_medium" placeholder="utm_medium" class="w-full" size="small" />
+        </template>
+      </Column>
+      <Column :showFilterMenu="false" field="utm_campaign" header="utm_campaign" sortable>
+        <template #filter>
+          <InputText type="search" v-model="filters.utm_campaign" placeholder="utm_campaign" class="w-full" size="small" />
+        </template>
+      </Column>
+      <Column :showFilterMenu="false" field="utm_content" header="utm_content" sortable>
+        <template #filter>
+          <InputText type="search" v-model="filters.utm_content" placeholder="utm_content" class="w-full" size="small" />
+        </template>
+      </Column>
+      <Column :showFilterMenu="false" field="utm_term" header="utm_term" sortable>
+        <template #filter>
+          <InputText type="search" v-model="filters.utm_term" placeholder="utm_term" class="w-full" size="small" />
+        </template>
+      </Column>
 
       <Column :showFilterMenu="false" header="created_at" sortable>
         <template #body="{ data }">
           {{ formatDateTime(data.created_at) }}
         </template>
+        <template #filter>
+          <DatePicker v-model="filters.created_at" selectionMode="range" :manualInput="false"
+            placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
+        </template>
       </Column>
+
+
 
       <Column :showFilterMenu="false" header="updated_at" sortable>
         <template #body="{ data }">
           {{ formatDateTime(data.updated_at) }}
+        </template>
+        <template #filter>
+          <DatePicker v-model="filters.updated_at" selectionMode="range" :manualInput="false"
+            placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
         </template>
       </Column>
 
@@ -839,16 +999,20 @@ tbody {
   pointer-events: none;
   /* Отключение кликов */
 }
+
 .custom-tooltip {
-  max-width: 600px !important;  /* Делаем тултип шире */
-  white-space: nowrap !important;  /* Запрещаем перенос строк */
-  overflow: hidden !important;  /* Скрываем лишний текст */
-  text-overflow: ellipsis !important;  /* Добавляем многоточие, если текст не влезает */
-}
-.p-datatable-tbody > tr.p-datatable-row-selected {
-  background: #000!important;
-  color: #fff!important;
+  max-width: 600px !important;
+  /* Делаем тултип шире */
+  white-space: nowrap !important;
+  /* Запрещаем перенос строк */
+  overflow: hidden !important;
+  /* Скрываем лишний текст */
+  text-overflow: ellipsis !important;
+  /* Добавляем многоточие, если текст не влезает */
 }
 
-
+.p-datatable-tbody>tr.p-datatable-row-selected {
+  background: #000 !important;
+  color: #fff !important;
+}
 </style>

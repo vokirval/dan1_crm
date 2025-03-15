@@ -50,6 +50,39 @@ class ProductsController extends Controller
         ]);
     }
 
+    public function getAll()
+    {
+        $products = Product::select('id', 'name')->get();
+        return response()->json(['products' => $products]);
+    }
+
+    public function getVariations($productId)
+    {
+        // Проверяем, существует ли товар
+        $product = Product::find($productId);
+        if (!$product) {
+            return response()->json(['error' => 'Product not found'], 404);
+        }
+
+        // Получаем вариации и формируем название с атрибутами
+        $variations = ProductVariation::where('product_id', $productId)
+            ->with('attributes:product_variation_id,attribute_name,attribute_value')
+            ->select('id', 'sku')
+            ->get()
+            ->map(function ($variation) {
+                $attributesString = $variation->attributes->map(function ($attr) {
+                    return "{$attr->attribute_name}: {$attr->attribute_value}";
+                })->join(', ');
+
+                $variation->name = $attributesString ?: 'Без атрибутів';
+                return $variation;
+            });
+
+        return response()->json(['variations' => $variations]);
+    }
+
+
+
     /**
      * Show the single product for editing.
      */

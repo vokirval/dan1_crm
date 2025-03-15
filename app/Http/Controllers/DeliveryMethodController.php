@@ -24,6 +24,16 @@ class DeliveryMethodController extends Controller
         ]);
     }
 
+    public function getall(Request $request)
+    {
+ 
+        $delivery_methods = DeliveryMethod::all();
+    
+        return response()->json([
+            'delivery_methods' => $delivery_methods,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
