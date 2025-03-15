@@ -58,7 +58,7 @@ Route::post('/inpost-webhook', function (Request $request) {
             // Если статус "delivered", записываем дату доставки
             if (strtolower($webhookData['inpost_status']) === 'delivered') {
                 $updateData['delivery_date'] = Carbon::now()->format('Y-m-d H:i');
-                $logMessages[] = 'Замовлення доставлено, встановлено delivery_date: ' . $updateData['delivery_date'];
+                $logMessages[] = 'Замовлення доставлено, Дата отримання: ' . $updateData['delivery_date'];
             }
         }
 
