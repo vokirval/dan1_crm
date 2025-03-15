@@ -120,7 +120,7 @@ class OrderObserver
             OrderFulfillment::create([
                 'order_id' => $order->id,
                 'sent' => false,
-                'comment' => 'Відсутня фамілія в імені.',
+                'comment' => 'Відсутня Фамілія.',
             ]);
             \Log::warning('Order not sent: missing surname', ['order_id' => $order->id]);
             return;
