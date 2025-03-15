@@ -32,7 +32,7 @@ const filters = ref({
   responsible_user_id: null,
   delivery_city: "",
   payment_method_id: null,
-  is_paid: null,
+  is_paid: "",
   ip: "",
   delivery_method_id: null,
   created_at: null,
