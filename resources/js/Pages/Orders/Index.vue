@@ -495,7 +495,7 @@ const getTooltipText = (items) => {
       showGridlines :paginator="true" :rows="perPage" :rows-per-page-options="[10, 20, 50, 100]"
       :first="(currentPage - 1) * perPage" :total-records="orders.total" :lazy="true" :sort-field="sortBy"
       :sort-order="sortDirection === 'asc' ? 1 : -1" @page="onPageChange" @sort="onSortChange" dataKey="id" scrollable
-      @row-dblclick="openOrderDialog" size="small" filterDisplay="row" selectionMode="multiple"
+      @row-dblclick="openOrderDialog" size="small" filterDisplay="row" selectionMode="multiple" 
       :class="{ 'blur-sm pointer-events-none': isLoading }" :rowClass="rowClass">
       <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
       <Column field="id" header="ID" sortable :showFilterMenu="false" bodyStyle="text-align:center" style="min-width:50px;">
@@ -845,5 +845,10 @@ tbody {
   overflow: hidden !important;  /* Скрываем лишний текст */
   text-overflow: ellipsis !important;  /* Добавляем многоточие, если текст не влезает */
 }
+.p-datatable-tbody > tr.p-datatable-row-selected {
+  background: #000!important;
+  color: #fff!important;
+}
+
 
 </style>
