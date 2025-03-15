@@ -28,11 +28,12 @@ class OrdersController extends Controller
         $sortBy = $request->input('sort_by', 'created_at');
         $sortDirection = $request->input('sort_direction', 'desc');
         $statusId = $request->input('order_status_id');
-        $filters = $request->only(['id', 'delivery_fullname', 'phone', 'ip', 'email']);
+        $filters = $request->only(['id', 'delivery_fullname', 'phone', 'email', 'comment', 'delivery_city', 'ip' ]);
+        $strongFilters = $request->only(['order_status_id','responsible_user_id','payment_method_id', 'is_paid']);
         $user = auth()->user();
 
         // Разрешенные поля для сортировки
-        $allowedSortFields = ['id', 'created_at', 'updated_at', 'delivery_fullname', 'phone', 'email', 'delivery_city', 'order_status_id'];
+        $allowedSortFields = ['id', 'created_at', 'updated_at', 'delivery_fullname', 'phone', 'email', 'delivery_city', 'order_status_id', 'is_paid'];
 
         // Проверка сортировки
         if (!in_array($sortBy, $allowedSortFields)) {
@@ -49,17 +50,22 @@ class OrdersController extends Controller
             $ordersQuery = Order::whereIn('group_id', $userGroupIds);
         }
 
-        // Фильтрация по статусу, если статус выбран
-        if ($statusId) {
-            $ordersQuery->where('order_status_id', $statusId);
-        }
 
+        
         // Фильтрация по каждому полю
         foreach ($filters as $key => $value) {
             if ($value) {
                 $ordersQuery->where($key, 'like', "%{$value}%");
             }
         }
+
+        // Фильтрация по каждому точному полю
+        foreach ($strongFilters as $key => $value) {
+            if (!is_null($value) && $value !== '') { // Проверяем, что значение передано
+                $ordersQuery->where($key, $value);
+            }
+        }
+        
 
         // Применяем сортировку и пагинацию
         $orders = $ordersQuery

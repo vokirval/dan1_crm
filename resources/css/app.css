@@ -87,3 +87,8 @@ body {
   label {
     margin-left:5px
   }
+
+  .p-datatable.p-datatable-sm .p-datatable-tbody > tr > td {
+    padding: 0.3rem 0.3rem!important;
+   
+}

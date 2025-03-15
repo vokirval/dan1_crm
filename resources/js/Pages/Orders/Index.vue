@@ -19,18 +19,21 @@ const confirm = useConfirm();
 
 const frozens = ref({
   'utm_source': false,
-  'group': true
+  'group': false
 });
 
 const filters = ref({
   id: "",
+  order_status_id: null,
   delivery_fullname: "",
   phone: "",
-  ip: "",
   email: "",
-  order_status_id: null,
-  payment_method_id: null,
+  comment: "",
   responsible_user_id: null,
+  delivery_city: "",
+  payment_method_id: null,
+  is_paid: null,
+  ip: "",
   delivery_method_id: null,
   created_at: null,
   updated_at: null
@@ -48,7 +51,6 @@ const perPage = ref(orders.value.per_page || 10);
 const currentPage = ref(orders.value.current_page || 1);
 const sortBy = ref('created_at');
 const sortDirection = ref('desc');
-const showFilters = ref(false);
 const visible = ref(false);
 const selectedOrder = ref(null);
 
@@ -118,7 +120,16 @@ const resetFilters = () => {
     phone: "",
     ip: "",
     email: "",
+    comment: "",
+    responsible_user_id: "",
+    delivery_city: "",
+    payment_method_id: "",
+    is_paid: "",
   };
+  selectedProduct.value = []
+  sortBy.value = "created_at";
+  sortDirection.value = "desc";
+  currentStatusId.value = "";
   loadOrders();
 };
 
@@ -130,6 +141,12 @@ onMounted(() => {
     phone: inertiaProps.filters.phone || "",
     ip: inertiaProps.filters.ip || "",
     email: inertiaProps.filters.email || "",
+    comment: inertiaProps.filters.comment || "",
+    responsible_user_id: inertiaProps.filters.responsible_user_id || "",
+    delivery_city: inertiaProps.filters.delivery_city || "",
+    payment_method_id: inertiaProps.filters.payment_method_id || "",
+    is_paid: inertiaProps.filters.is_paid || "",
+    
   };
 });
 
@@ -332,43 +349,52 @@ const duplicateOrder = (orderId) => {
     toast.add({ severity: 'warn', summary: 'Ошибка', detail: 'Выберите хотя бы один заказ.', life: 3000, });
     return;
   }
-    confirm.require({
-        message: "Ви дійсно хочете дублювати це замовлення?",
-        target: event.currentTarget,
-        accept: () => {
-            router.post(`/orders/${orderId}/duplicate`, {}, {
-                onSuccess: () => {
-                  selectedProduct.value = [];
-                    toast.add({ severity: 'success', summary: 'Успіх!', detail: 'Замовлення продубльовано!', life: 3000 });
-                    loadOrders();
-                },
-                onError: () => {
-                    toast.add({ severity: 'error', summary: 'Помилка', detail: 'Помилка дублювання замовлення.', life: 3000 });
-                },
-            });
+  confirm.require({
+    message: "Ви дійсно хочете дублювати це замовлення?",
+    target: event.currentTarget,
+    accept: () => {
+      router.post(`/orders/${orderId}/duplicate`, {}, {
+        onSuccess: () => {
+          selectedProduct.value = [];
+          toast.add({ severity: 'success', summary: 'Успіх!', detail: 'Замовлення продубльовано!', life: 3000 });
+          loadOrders();
         },
-        reject: () => {}
-    });
+        onError: () => {
+          toast.add({ severity: 'error', summary: 'Помилка', detail: 'Помилка дублювання замовлення.', life: 3000 });
+        },
+      });
+    },
+    reject: () => { }
+  });
 };
 
 
 const loadUsers = () => {
-  if(users.value.length > 0) {
+  if (users.value.length > 0) {
     return;
   }
-    axios.get('/users/getall').then(response => {
-      users.value = response.data.users;
-    });
+  axios.get('/users/getall').then(response => {
+    users.value = response.data.users;
+  });
 };
 
 const loadPaymentMethods = () => {
-  if(payment_methods.value.length > 0) {
+  if (payment_methods.value.length > 0) {
     return;
   }
-    axios.get('/payment-methods/getall').then(response => {
-      payment_methods.value = response.data.payment_methods;
-    });
+  axios.get('/payment-methods/getall').then(response => {
+    payment_methods.value = response.data.payment_methods;
+  });
 };
+
+const getTooltipText = (items) => {
+  return items.map(item => {
+    const productName = item.product?.name || item.product_variation?.product?.name || "Товар не знайдено";
+    const variationName = item.product_variation ? ` | ${formatVariationName(item.product_variation)}` : "";
+    return `<span>${productName}${variationName} | x${item.quantity} | ${item.price}</span>`;
+  }).join("\n");
+};
+
 
 </script>
 
@@ -394,90 +420,67 @@ const loadPaymentMethods = () => {
       </div>
     </div>
     <div class="flex justify-between items-center my-4 gap-3">
-      <Button @click="loadOrders" severity="secondary" :disabled="isLoading">
-        <RefreshCcw class="w-5 h-5 transition-transform duration-500 ease-in-out"
-          :class="{ 'animate-spin': isLoading }" />
-      </Button>
-      <div class="flex gap-3">
-        <Button @click="showFilters = !showFilters" severity="secondary">
-          <Filter class="w-5 h-5" />
-        </Button>
-        <Link href="/orders/create" as="Button" class="p-button p-component p-button-contrast">
-        <Plus /> Додати замовлення</Link>
-      </div>
-    </div>
-    <div v-if="showFilters" class="border border-top p-3 border-[#eee]">
-      <div class="mb-4 grid grid-cols-7 gap-3">
-        <input type="text" v-model="filters.id" class="border border-gray-300 p-2 rounded" placeholder="Пошук за ID" />
-        <input type="text" v-model="filters.delivery_fullname" class="border border-gray-300 p-2 rounded"
-          placeholder="Ім'я" />
-        <input type="text" v-model="filters.phone" class="border border-gray-300 p-2 rounded" placeholder="Телефон" />
-        <input type="text" v-model="filters.ip" class="border border-gray-300 p-2 rounded" placeholder="IP" />
-        <input type="text" v-model="filters.email" class="border border-gray-300 p-2 rounded" placeholder="Пошта" />
-        <Button class="text-xs" @click="loadOrders">
-          <Search class="w-5 h-5" /> Пошук
-        </Button>
-        <Button class="text-xs" @click="resetFilters">
-          <FilterX class="w-5 h-5" />Скинути
-        </Button>
-      </div>
-
-    </div>
-
-
-    <div class="flex mt-5 w-full" v-if="selectedProduct[0]">
 
       <Toolbar class="w-full">
         <template #start>
-          <Button label="Inbox" outlined @click="selectedProduct = []">Вибрано: <b>{{ selectedProduct.length }}</b></Button>
+          <Button @click="loadOrders" outlined :disabled="isLoading">
+            <RefreshCcw class="w-5 h-5 transition-transform duration-500 ease-in-out"
+              :class="{ 'animate-spin': isLoading }" />
+          </Button>
 
-            <!-- Дублирование заказа -->
-            <Button 
-            class=" ml-3"
-                 severity="secondary" 
-                v-if="selectedProduct.length === 1" 
-                @click="duplicateOrder(selectedProduct[0].id)" 
-            ><Copy class="w-5 h-5" /> Дублювати</Button>
 
-            <!-- Массовое удаление -->
-            <Button 
-   
-              severity="secondary" 
-                class=" ml-3" 
-                v-if="selectedProduct.length > 0" 
-                @click="triggerMassDelete($event)" 
-            ><Trash class="w-5 h-5" /> Видалити</Button>
 
-            <!-- Кнопка редактирования комментария -->
-            <Button 
-                severity="secondary" 
-                class=" ml-3"
-                v-if="selectedProduct.length > 0" 
-                @click="commentDialog = true"
-            ><MessageCircleMore class="w-5 h-5" /> Редагувати коментар</Button>
+
+          <Button class=" ml-3" outlined @click="selectedProduct = []">Вибрано: <b>{{ selectedProduct.length
+          }}</b></Button>
+
+          <!-- Дублирование заказа -->
+          <Button class=" ml-3" severity="secondary" v-if="selectedProduct.length === 1"
+            @click="duplicateOrder(selectedProduct[0].id)">
+            <Copy class="w-5 h-5" /> Дублювати
+          </Button>
+
+          <!-- Массовое удаление -->
+          <Button severity="secondary" class=" ml-3" v-if="selectedProduct.length > 0"
+            @click="triggerMassDelete($event)">
+            <Trash class="w-5 h-5" /> Видалити
+          </Button>
+
+          <!-- Кнопка редактирования комментария -->
+          <Button severity="secondary" class=" ml-3" v-if="selectedProduct.length > 0" @click="commentDialog = true">
+            <MessageCircleMore class="w-5 h-5" /> Редагувати коментар
+          </Button>
         </template>
 
         <template #center>
-            
-            
+          <Select v-model="selectedStatus" v-if="selectedProduct.length > 0"
+            :options="statuses.map(s => ({ label: s.name, value: s.id }))" optionLabel="label" optionValue="value"
+            placeholder="Змінити статус" class="w-56" />
+          <Button severity="secondary" class=" ml-3" v-if="selectedProduct.length > 0 && selectedStatus"
+            @click="triggerMassUpdateStatus($event, selectedStatus)">
+            <RefreshCw class="w-5 h-5" /> Змінити статус
+          </Button>
+
         </template>
 
         <template #end>
           <!-- Выпадающее меню для редактирования -->
 
-          <Select v-model="selectedStatus" v-if="selectedProduct.length > 0" :options="statuses.map(s => ({ label: s.name, value: s.id }))"
-        optionLabel="label" optionValue="value" placeholder="Оберіть статус" class="w-56" />
-            <Button 
-                severity="secondary"
-                class=" ml-3"
-                v-if="selectedProduct.length > 0" 
-                @click="triggerMassUpdateStatus($event, selectedStatus)" 
-            ><RefreshCw class="w-5 h-5" /> Оновити статус</Button>
+          <Button severity="secondary" @click="resetFilters">
+            <FilterX class="w-5 h-5" /> Скинути фільтри
+          </Button>
+
+          <Button class="ml-3" @click="loadOrders">
+            <Search class="w-5 h-5" /> Пошук
+          </Button>
+
+          <Link href="/orders/create" as="Button" class="p-button p-component p-button-contrast ml-3">
+          <Plus class="w-5 h-5" /> Додати </Link>
         </template>
-    </Toolbar>
-
-
+      </Toolbar>
     </div>
+
+
 
     <Dialog v-model:visible="commentDialog" header="Редагувати коментар" modal>
       <template #default>
@@ -488,19 +491,19 @@ const loadPaymentMethods = () => {
     </Dialog>
 
 
-    <DataTable class="mt-5" v-model:selection="selectedProduct" :value="orders.data" resizableColumns columnResizeMode="expand" showGridlines :paginator="true" :rows="perPage"
-      :rows-per-page-options="[10, 20, 50, 100]" :first="(currentPage - 1) * perPage" :total-records="orders.total"
-      :lazy="true" :sort-field="sortBy" :sort-order="sortDirection === 'asc' ? 1 : -1" @page="onPageChange"
-      @sort="onSortChange"  dataKey="id" scrollable @row-dblclick="openOrderDialog" size="small" filterDisplay="row"
-    selectionMode="multiple"
+    <DataTable v-model:selection="selectedProduct" :value="orders.data" resizableColumns columnResizeMode="expand"
+      showGridlines :paginator="true" :rows="perPage" :rows-per-page-options="[10, 20, 50, 100]"
+      :first="(currentPage - 1) * perPage" :total-records="orders.total" :lazy="true" :sort-field="sortBy"
+      :sort-order="sortDirection === 'asc' ? 1 : -1" @page="onPageChange" @sort="onSortChange" dataKey="id" scrollable
+      @row-dblclick="openOrderDialog" size="small" filterDisplay="row" selectionMode="multiple"
       :class="{ 'blur-sm pointer-events-none': isLoading }" :rowClass="rowClass">
       <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-      <Column field="id" header="ID" sortable :showFilterMenu="false" style="min-width:50px;">
+      <Column field="id" header="ID" sortable :showFilterMenu="false" bodyStyle="text-align:center" style="min-width:50px;">
         <template #filter>
-            <InputText v-model="filters.id" placeholder="ID" class="w-full" />
+          <InputText v-model="filters.id" placeholder="ID" class="w-full" />
         </template>
-        </Column>
-      <Column :showFilterMenu="false" class="w-[40px]" header="Статус" sortField="order_status_id"  :sortable="true">
+      </Column>
+      <Column :showFilterMenu="false" class="w-[40px]" header="Статус" sortField="order_status_id" :sortable="true">
         <template #body="{ data }">
           <span v-if="data.status" class="rounded flex items-center justify-center p-1 text-white text-xs"
             :style="{ backgroundColor: `#${data.status.color}` }">
@@ -511,83 +514,94 @@ const loadPaymentMethods = () => {
           </span>
         </template>
         <template #filter>
-            <Select v-model="filters.order_status_id" optionValue="id" :options="statuses" optionLabel="name" :showClear="true"
-                        placeholder="Статус" class="w-full" />
+          <Select v-model="filters.order_status_id" optionValue="id" :options="statuses" optionLabel="name"
+            :showClear="true" placeholder="Статус" class="w-full" />
         </template>
       </Column>
 
       <Column :showFilterMenu="false" field="delivery_fullname" header="Контакт" sortable>
         <template #filter>
-            <InputText v-model="filters.delivery_fullname"  placeholder="ім'я або Фамілія" class="w-full" />
+          <InputText v-model="filters.delivery_fullname" placeholder="Ім'я або Фамілія" class="w-full" />
         </template>
       </Column>
       <Column :showFilterMenu="false" field="phone" header="Телефон" sortable>
         <template #filter>
-            <InputText v-model="filters.phone" placeholder="Телефон" class="w-full" />
+          <InputText v-model="filters.phone" placeholder="Телефон" class="w-full" />
         </template>
       </Column>
       <Column :showFilterMenu="false" field="email" header="Email" sortable>
         <template #filter>
-            <InputText v-model="filters.email"  placeholder="Email" class="w-full" />
+          <InputText v-model="filters.email" placeholder="Email" class="w-full" />
         </template>
       </Column>
-      <Column :showFilterMenu="false" field="comment" header="Коментар" bodyClass="cursor-help" bodyStyle="max-width:250px">
+      <Column :showFilterMenu="false" field="comment" header="Коментар" bodyClass="cursor-help"
+        bodyStyle="max-width:250px">
+        <template #filter>
+          <InputText v-model="filters.comment" placeholder="Коментар" class="w-full" />
+        </template>
         <template #body="{ data }">
-          <div class="w-full h-full" v-tooltip.top="{ value: data.comment, showDelay: 1000, hideDelay: 300 }">{{ data.comment }}</div>
+          <div class="w-full h-full truncate" v-tooltip.top="{ value: data.comment, showDelay: 1000, hideDelay: 300, class: 'text-sm' }">{{
+            data.comment }}</div>
         </template>
       </Column>
-      
-      <Column :showFilterMenu="false" header="Товари" >
+
+      <Column :showFilterMenu="false" header="Товари" bodyStyle="max-width:200px">
         <template #body="{ data }">
-          <div v-for="item in data.items" :key="item.id">
-            <div class=" text-xs">
-              <span v-if="item.product_id">{{
-                item.product.name
-              }}</span>
-              <span v-else-if="item.product_variation_id">
-                {{
-                  item.product_variation.product.name
-                }}</span>
+          <div v-if="data.items.length > 0" v-tooltip.top="{ value: getTooltipText(data.items), showDelay: 500, hideDelay: 300, escape:false, class: 'text-sm custom-tooltip ',  }">
+            <!-- Первый товар -->
+            <div class="text-sm truncate">
+              <span v-if="data.items[0].product_id">
+                {{ data.items[0].product.name }}
+              </span>
+              <span v-else-if="data.items[0].product_variation_id">
+                {{ data.items[0].product_variation.product.name }}
+              </span>
               <span v-else>Товар не знайдено...</span>
 
-              <span v-if="item.product_variation_id">
-                | {{
-                  formatVariationName(
-                    item.product_variation
-                  )
-                }}
+              <span v-if="data.items[0].product_variation_id">
+                | {{ formatVariationName(data.items[0].product_variation) }}
               </span>
 
-              | x{{ item.quantity }}
-
-
-
-              | {{ item.price }}
-
-
+              | x{{ data.items[0].quantity }}
+              | {{ data.items[0].price }}
             </div>
+
+           
           </div>
         </template>
       </Column>
 
       <Column :showFilterMenu="false" field="responsible_user.name" header="Відповідальний">
-          <template #filter>
-            <Select v-model="filters.responsible_user_id" @click="loadUsers" :options="users" :showClear="true"
-            optionLabel="name" optionValue="id" placeholder="Оберіть відповідального" class="w-full" />
-          </template>
+        <template #filter>
+          <Select v-model="filters.responsible_user_id" @click="loadUsers" :options="users" :showClear="true"
+            optionLabel="name" optionValue="id" placeholder="Відповідальний" class="w-full" />
+        </template>
       </Column>
 
-      <Column :showFilterMenu="false" field="delivery_city" header="Місто" sortable />
+      <Column :showFilterMenu="false" field="delivery_city" header="Місто" sortable>
+        <template #filter>
+          <InputText v-model="filters.delivery_city" placeholder="Місто" class="w-full" />
+        </template>
+      </Column>
       <Column :showFilterMenu="false" field="delivery_address" header="Адреса" />
       <Column :showFilterMenu="false" field="delivery_postcode" header="Зіп код" />
 
       <Column :showFilterMenu="false" field="payment_method.name" header="Метод оплати">
-          <template #filter>
-              <Select v-model="filters.payment_method_id" @click="loadPaymentMethods" :showClear="true" :options="payment_methods"
-                  optionLabel="name" optionValue="id" placeholder="Оберіть метод оплати" class="w-full" />
-          </template>
+        <template #filter>
+          <Select v-model="filters.payment_method_id" @click="loadPaymentMethods" :showClear="true"
+            :options="payment_methods" optionLabel="name" optionValue="id" placeholder="Метод оплати"
+            class="w-full" />
+        </template>
       </Column>
-      <Column :showFilterMenu="false" class="w-[40px]" header="Оплата">
+      <Column :showFilterMenu="false" class="w-[40px]" header="Оплата" sortable field="is_paid">
+        <template #filter>
+          <Select optionLabel="label" optionValue="value" class="w-full" v-model="filters.is_paid" :showClear="true" placeholder="Оплата"
+            :options="[
+                { label: 'Так', value: 1 },
+                { label: 'Ні', value: 0 },
+            ]" />
+   
+        </template>
         <template #body="{ data }">
           <span v-if="data.is_paid"
             class="rounded flex items-center justify-center p-1 text-white text-xs bg-green-500">
@@ -610,12 +624,14 @@ const loadPaymentMethods = () => {
       <Column :showFilterMenu="false" field="ip" header="IP" />
       <Column :showFilterMenu="false" field="website_referrer" header="Website Reffer" />
 
-      <Column :showFilterMenu="false" field="utm_source" header="utm_source" alignFrozen="right" :frozen="frozens.utm_source">
+      <Column :showFilterMenu="false" field="utm_source" header="utm_source" alignFrozen="right"
+        :frozen="frozens.utm_source">
         <template #header>
           <ToggleButton v-model="frozens.utm_source" onLabel="-" offLabel="+" />
         </template>
       </Column>
-      <Column :showFilterMenu="false" field="utm_medium" header="utm_medium" alignFrozen="right" :frozen="frozens.utm_medium" />
+      <Column :showFilterMenu="false" field="utm_medium" header="utm_medium" alignFrozen="right"
+        :frozen="frozens.utm_medium" />
       <Column :showFilterMenu="false" field="utm_campaign" header="utm_campaign" />
       <Column :showFilterMenu="false" field="utm_content" header="utm_content" />
       <Column :showFilterMenu="false" field="utm_term" header="utm_term" />
@@ -658,16 +674,16 @@ const loadPaymentMethods = () => {
             <p class="w-2/12"><strong>ТТН:</strong><br> {{ selectedOrder.tracking_number || '-' }}</p>
             <p class="w-2/12"><strong>Зворотна ТТН:</strong><br> {{ selectedOrder.return_tracking_number || '-' }}</p>
             <p class="w-2/12"><strong>Статус замовлення:</strong><br>
-              <div v-if="selectedOrder.status" class="rounded  p-1 text-white text-xs max-w-[100px] text-center"
-                :style="{ backgroundColor: `#${selectedOrder.status.color}` }">
-                {{ selectedOrder.status?.name }}
+            <div v-if="selectedOrder.status" class="rounded  p-1 text-white text-xs max-w-[100px] text-center"
+              :style="{ backgroundColor: `#${selectedOrder.status.color}` }">
+              {{ selectedOrder.status?.name }}
             </div>
-              <span v-else class="rounded p-1 text-white bg-black text-xs">
-                Без статусу
-              </span>
+            <span v-else class="rounded p-1 text-white bg-black text-xs">
+              Без статусу
+            </span>
             </p>
             <p class="w-2/12"><strong>Статус Inpost:</strong><br>
-              <span v-if="selectedOrder.inpost_status"  class="rounded p-1 text-white bg-black text-xs">
+              <span v-if="selectedOrder.inpost_status" class="rounded p-1 text-white bg-black text-xs">
                 {{ selectedOrder.inpost_status }}
               </span>
               <span v-else class="rounded p-1 text-white bg-black text-xs">
@@ -823,4 +839,11 @@ tbody {
   pointer-events: none;
   /* Отключение кликов */
 }
+.custom-tooltip {
+  max-width: 600px !important;  /* Делаем тултип шире */
+  white-space: nowrap !important;  /* Запрещаем перенос строк */
+  overflow: hidden !important;  /* Скрываем лишний текст */
+  text-overflow: ellipsis !important;  /* Добавляем многоточие, если текст не влезает */
+}
+
 </style>

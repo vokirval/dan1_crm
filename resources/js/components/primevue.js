@@ -28,11 +28,12 @@ import ConfirmationService from 'primevue/confirmationservice';
 import ColorPicker from 'primevue/colorpicker';
 import Inplace from 'primevue/inplace';
 import Toolbar from 'primevue/toolbar';
+import Menu from 'primevue/menu';
+
 
 import Timeline from 'primevue/timeline';
 
 import IftaLabel from 'primevue/iftalabel';
-import Menu from 'primevue/menu';
 import Badge from 'primevue/badge';
 import Avatar from 'primevue/avatar';
 import MultiSelect from 'primevue/multiselect';
@@ -144,7 +145,6 @@ export function setupPrimeVue(app) {
     app.component('InputGroupAddon', InputGroupAddon);
     app.component('Toolbar', Toolbar);
     app.component('Timeline', Timeline);
-
     
     
 
