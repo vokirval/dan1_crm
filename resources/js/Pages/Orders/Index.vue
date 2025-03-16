@@ -4,7 +4,7 @@ import Layout from '../../Layout/App.vue';
 import { usePage, Head, router, Link } from '@inertiajs/vue3';
 import { DataTable, Column, Button } from 'primevue';
 import { useToast } from 'primevue/usetoast';
-import { Plus, Pencil, Filter, FilterX, Search, RefreshCcw, Copy, Trash, RefreshCw, MessageCircleMore } from 'lucide-vue-next';
+import { Plus, Pencil, Filter, FilterX, Search, RefreshCcw, Copy, Trash, RefreshCw, MessageCircleMore} from 'lucide-vue-next';
 import { useConfirm } from "primevue/useconfirm";
 import { lockedOrders } from '../../ably'; // Импортируем список заблокированных заказов
 
@@ -505,6 +505,56 @@ const getTooltipText = (items) => {
 };
 
 
+const copyOrderDetails = async () => {
+    let text = `Основна інформація\n`;
+    text += `ID: ${selectedOrder.value.id || '-'}\n`;
+    text += `ТТН: ${selectedOrder.value.tracking_number || '-'}\n`;
+    text += `Зворотна ТТН: ${selectedOrder.value.return_tracking_number || '-'}\n`;
+    text += `Статус замовлення: ${selectedOrder.value.status?.name || '-'}\n`;
+    text += `Статус Inpost: ${selectedOrder.value.inpost_status || '-'}\n`;
+    text += `Відправлено: ${formatDateTime(selectedOrder.value.sent_at || '-')}\n`;
+    text += `Дата отримання: ${formatDateTime(selectedOrder.value.delivery_date) || '-'}\n`;
+    text += `Група: ${selectedOrder.value.group?.name || '-'}\n`;
+    text += `Відповідальний: ${selectedOrder.value.responsible_user?.name || '-'}\n`;
+    text += `Коментар: ${selectedOrder.value.comment || '-'}\n\n`;
+
+    text += `Доставка\n`;
+    text += `Ім'я та Фамілія: ${selectedOrder.value.delivery_fullname || '-'}\n`;
+    text += `Телефон: ${selectedOrder.value.phone || '-'}\n`;
+    text += `Email: ${selectedOrder.value.email || '-'}\n`;
+    text += `Місто: ${selectedOrder.value.delivery_city || '-'}\n`;
+    text += `ЗІП код: ${selectedOrder.value.delivery_postcode || '-'}\n`;
+    text += `Метод доставки: ${selectedOrder.value.delivery_method?.name || '-'}\n`;
+    text += `Адреса: ${selectedOrder.value.delivery_address || '-'} ${selectedOrder.value.delivery_address_number || '-'}\n\n`;
+
+    text += `Оплата\n`;
+    text += `Метод оплати: ${selectedOrder.value.payment_method?.name || '-'}\n`;
+    text += `Оплачено: ${selectedOrder.value.is_paid ? '✅ Так' : '❌ Ні'}\n`;
+    text += `Дата онлайн оплати: ${formatDateTime(selectedOrder.value.payment_date) || '-'}\n`;
+    text += `Сума оплати: ${selectedOrder.value.paid_amount || '0'}\n\n`;
+
+    text += `Товари\n`;
+    selectedOrder.value.items.forEach((item, index) => {
+        const productName = item.product?.name || item.product_variation?.product?.name || 'Невідомий товар';
+        const variationName = item.product_variation
+            ? item.product_variation.attributes
+                  .map(attr => `${attr.attribute_name}: ${attr.attribute_value}`)
+                  .join(', ')
+            : '';
+
+        text += `${index + 1}. ${productName} ${variationName ? `(${variationName})` : ''} - ${item.quantity} шт. - ${formatCurrency(item.price)}\n`;
+    });
+
+    text += `\nЗагальна сума: ${formatCurrency(totalAmount(selectedOrder.value.items))}\n`;
+
+    try {
+        await navigator.clipboard.writeText(text);
+        toast.add({ severity: 'success', summary: 'Скопійовано!', detail: 'Інформацію успішно скопійовано.', life: 3000 });
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Помилка!', detail: 'Не вдалося скопіювати інформацію.', life: 3000 });
+    }
+};
+
 </script>
 
 <template>
@@ -850,169 +900,138 @@ const getTooltipText = (items) => {
 
 
     <Dialog v-model:visible="visible" maximizable modal header="Деталі замовлення" :style="{ width: '100rem' }"
-      :breakpoints="{ '1199px': '75vw', '575px': '90vw' }">
-      <div v-if="selectedOrder">
+    :breakpoints="{ '1199px': '75vw', '575px': '90vw' }">
 
+    <div v-if="selectedOrder" class="space-y-3 ">
 
-        <!-- Основная информация -->
-        <div class=" bg-[#eee] rounded py-5 px-2 text-normal border-b ">
-          <div class="flex gap-4 justify-items-center items-center text-left text-sm mb-3">
-
-
-            <p class="w-1/12"><strong>ID:</strong><br> {{ selectedOrder.id || '-' }}</p>
-
-            <p class="w-2/12"><strong>ТТН:</strong><br> {{ selectedOrder.tracking_number || '-' }}</p>
-            <p class="w-2/12"><strong>Зворотна ТТН:</strong><br> {{ selectedOrder.return_tracking_number || '-' }}</p>
-            <p class="w-2/12"><strong>Статус замовлення:</strong><br>
-            <div v-if="selectedOrder.status" class="rounded  p-1 text-white text-xs max-w-[100px] text-center"
-              :style="{ backgroundColor: `#${selectedOrder.status.color}` }">
-              {{ selectedOrder.status?.name }}
+        <!-- 🟢 Основная информация -->
+        <div class="bg-gray-100 rounded-lg p-4 border border-gray-300 shadow-sm">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-lg font-semibold ">📌 Основна інформація</h3>
+              <div class=" text-center">
+                <Button size="small" severity="secondary" @click="copyOrderDetails" class="mr-2">
+                  <Copy class="w-5 h-5" /> Копіювати інформацію
+                </Button>
+                  <Button size="small" @click="viewOrder(selectedOrder.id)">
+                      <Pencil class="w-5 h-5" /> Редагувати
+                  </Button>
+              </div>
             </div>
-            <span v-else class="rounded p-1 text-white bg-black text-xs">
-              Без статусу
-            </span>
-            </p>
-            <p class="w-2/12"><strong>Статус Inpost:</strong><br>
-              <span v-if="selectedOrder.inpost_status" class="rounded p-1 text-white bg-black text-xs">
-                {{ selectedOrder.inpost_status }}
-              </span>
-              <span v-else class="rounded p-1 text-white bg-black text-xs">
-                Без статусу
-              </span>
-            </p>
-            <div class="w-3/12 text-center">
-              <Button size="small" @click="viewOrder(selectedOrder.id)">
-                <Pencil class="w-5 h-5" /> Редагувати замовлення
-              </Button>
+            <div class="grid grid-cols-3 gap-4">
+                <p><strong>ID:</strong> {{ selectedOrder.id || '-' }}</p>
+                <p><strong>ТТН:</strong> {{ selectedOrder.tracking_number || '-' }}</p>
+                <p><strong>Зворотна ТТН:</strong> {{ selectedOrder.return_tracking_number || '-' }}</p>
+                <p><strong>Статус замовлення: </strong>
+                    <span v-if="selectedOrder.status" class="rounded p-1 text-white text-xs"
+                        :style="{ backgroundColor: `#${selectedOrder.status.color}` }">
+                        {{ selectedOrder.status?.name }}
+                    </span>
+                    <span v-else class="rounded p-1 text-white bg-black text-xs">Без статусу</span>
+                </p>
+                <p><strong>Статус Inpost: </strong>
+                    <span v-if="selectedOrder.inpost_status" class="rounded p-1 text-white bg-black text-xs">
+                        {{ selectedOrder.inpost_status }}
+                    </span>
+                    <span v-else class="rounded p-1 text-white bg-black text-xs">Без статусу</span>
+                </p>
+                <p><strong>Відповідальний:</strong> {{ selectedOrder.responsible_user?.name || '-' }}</p>
+                <p><strong>Відправлено:</strong> {{ formatDateTime(selectedOrder.sent_at) }}</p>
+                <p><strong>Дата отримання:</strong> {{ formatDateTime(selectedOrder.delivery_date) }}</p>
+                <p><strong>Група:</strong> {{ selectedOrder.group?.name || '-' }}</p>
             </div>
+            
+        </div>
+
+        <div class="flex gap-4">
+          <div class="bg-yellow-100 rounded-lg p-4 border border-yellow-300 shadow-sm w-2/5">
+              <h3 class="text-lg font-semibold mb-3">💳 Оплата</h3>
+              <div class="grid grid-cols-2 gap-4">
+                  <p><strong>Метод оплати:</strong> {{ selectedOrder.payment_method?.name || '-' }}</p>
+                  <p><strong>Оплачено:</strong> {{ selectedOrder.is_paid ? '✅ Так' : '❌ Ні' }}</p>
+                  <p><strong>Дата онлайн оплати:</strong> {{ formatDateTime(selectedOrder.payment_date) || '-' }}</p>
+                  <p><strong>Сума оплати:</strong> {{ selectedOrder.paid_amount || '0' }}</p>
+              </div>
           </div>
-          <hr>
-          <div class="grid grid-cols-4 gap-4 justify-center items-center text-sm text-center mt-3">
-            <p><strong>Метод оплати:</strong> {{ selectedOrder.payment_method?.name }}</p>
-            <p><strong>Оплачено:</strong> {{ selectedOrder.is_paid ? 'Так' : 'Ні' }}</p>
-            <p><strong>Дата онлайн оплати:</strong> {{ formatDateTime(selectedOrder.payment_date) }}</p>
-            <p><strong>Сума оплати:</strong> {{ selectedOrder.paid_amount || 0 }}</p>
+
+          <!-- 🔵 Доставка -->
+          <div class="bg-blue-100 rounded-lg p-4 border border-blue-300 shadow-sm w-3/5">
+              <h3 class="text-lg font-semibold mb-3">🚚 Доставка</h3>
+              <div class="grid grid-cols-3 gap-4">
+                  <p><strong>Ім'я:</strong> {{ selectedOrder.delivery_fullname }}</p>
+                  <p><strong>Телефон:</strong> {{ selectedOrder.phone }}</p>
+                  <p><strong>Email:</strong> {{ selectedOrder.email }}</p>
+                  <p><strong>Місто:</strong> {{ selectedOrder.delivery_city }}</p>
+                  <p><strong>ЗІП код:</strong> {{ selectedOrder.delivery_postcode }}</p>
+                  <p><strong>Адреса:</strong> {{ selectedOrder.delivery_address }} {{ selectedOrder.delivery_address_number }}</p>
+                  <p><strong>Доп. адреса:</strong> {{ selectedOrder.delivery_second_address || '-' }}</p>
+                  <p><strong>Метод доставки:</strong> {{ selectedOrder.delivery_method?.name || '-' }}</p>
+              </div>
+              <p class="mt-4"><strong>Коментар:</strong> {{ selectedOrder.comment || '-' }}</p>
           </div>
         </div>
 
-        <!-- Доставка -->
-        <div class="text-sm p-5 bg-[#f1f5f9] ">
-          <div class="grid grid-cols-5 gap-4 ">
-            <p><strong>Ім'я:</strong> {{ selectedOrder.delivery_fullname }}</p>
-            <p><strong>Phone:</strong> {{ selectedOrder.phone }}</p>
-            <p><strong>Місто:</strong> {{ selectedOrder.delivery_city }}</p>
-            <p><strong>ЗІП код:</strong> {{ selectedOrder.delivery_postcode }}</p>
-            <p><strong>Адреса:</strong> {{ selectedOrder.delivery_address }}</p>
-            <p><strong>Доп. адреса:</strong> {{ selectedOrder.delivery_second_address }}</p>
-
-
-            <p><strong>Метод доставки:</strong> {{ selectedOrder.delivery_method?.name }}</p>
-            <p><strong>Email:</strong> {{ selectedOrder.email }}</p>
-            <p><strong>Комент:</strong> {{ selectedOrder.comment || 'N/A' }}</p>
-            <p><strong>Відповідальний:</strong> {{ selectedOrder.responsible_user?.name }}</p>
-            <p><strong>Група:</strong> {{ selectedOrder.group?.name }}</p>
-
-          </div>
+        <!-- 🛒 Товары -->
+        <div class="bg-green-100 rounded-lg p-4 border border-green-300 shadow-sm">
+            <h3 class="text-lg font-semibold mb-3">🛍️ Товари в замовленні</h3>
+            <table class="table-auto w-full border-collapse border border-gray-300 text-sm">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="border border-gray-300 p-2">Назва</th>
+                        <th class="border border-gray-300 p-2">Атрибути</th>
+                        <th class="border border-gray-300 p-2">Кількість</th>
+                        <th class="border border-gray-300 p-2">Ціна</th>
+                        <th class="border border-gray-300 p-2">Сума</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="item in selectedOrder.items" :key="item.id" class="text-center">
+                        <td class="border border-gray-300 p-2">
+                            <span v-if="item.product_id">{{ item.product.name }}</span>
+                            <span v-else-if="item.product_variation_id">{{ item.product_variation.product.name }}</span>
+                            <span v-else>Товар не знайдено...</span>
+                        </td>
+                        <td class="border border-gray-300 p-2">
+                            <span v-if="item.product_variation_id">{{ formatVariationName(item.product_variation) }}</span>
+                            <span v-else>-</span>
+                        </td>
+                        <td class="border border-gray-300 p-2">{{ item.quantity }}</td>
+                        <td class="border border-gray-300 p-2">{{ item.price }}</td>
+                        <td class="border border-gray-300 p-2">{{ formatCurrency(item.quantity * item.price) }}</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr class="font-bold text-center bg-gray-100">
+                        <td colspan="4" class="border border-gray-300 p-2 text-right">Загальна сума:</td>
+                        <td class="border border-gray-300 p-2">{{ formatCurrency(totalAmount(selectedOrder.items)) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
 
-
-
-
-
-
-
-
-
-        <table class="table-auto w-full border-collapse border border-gray-300 my-5 text-sm">
-          <thead>
-            <tr>
-              <th class="border border-gray-300 p-2">Назва</th>
-              <th class="border border-gray-300 p-2">Атрибути</th>
-              <th class="border border-gray-300 p-2">
-                Кількість
-              </th>
-              <th class="border border-gray-300 p-2">Ціна</th>
-              <th class="border border-gray-300 p-2">Сума</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in selectedOrder.items" :key="item.id">
-              <td class="border border-gray-300 p-2">
-                <span v-if="item.product_id">{{
-                  item.product.name
-                }}</span>
-                <span v-else-if="item.product_variation_id">
-                  {{
-                    item.product_variation.product.name
-                  }}</span>
-                <span v-else>Товар не знайдено...</span>
-              </td>
-              <td class="border border-gray-300 p-2">
-                <span v-if="item.product_variation_id">
-                  {{
-                    formatVariationName(
-                      item.product_variation
-                    )
-                  }}
-                </span>
-                <span v-else> - </span>
-              </td>
-              <td class="border border-gray-300 p-2">
-
-                {{ item.quantity }}
-
-              </td>
-              <td class="border border-gray-300 p-2">
-
-                {{ item.price }}
-
-
-              </td>
-              <td class="border border-gray-300 p-2">
-                {{ formatCurrency(item.quantity * item.price) }}
-              </td>
-
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="4" class="border border-gray-300 p-2 font-bold text-right">
-                Загальна сума:
-              </td>
-              <td class="border border-gray-300 p-2 font-bold">
-                {{ formatCurrency(totalAmount(selectedOrder.items)) }}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-
-        <!-- UTM-метки -->
-        <div class="text-sm p-5 bg-[#f1f5f9]">
-          <div class="grid grid-cols-5 gap-4 mt-2">
-            <p><strong>UTM Source:</strong> {{ selectedOrder.utm_source || 'N/A' }}</p>
-            <p><strong>UTM Medium:</strong> {{ selectedOrder.utm_medium || 'N/A' }}</p>
-            <p><strong>UTM Term:</strong> {{ selectedOrder.utm_term || 'N/A' }}</p>
-            <p><strong>UTM Content:</strong> {{ selectedOrder.utm_content || 'N/A' }}</p>
-            <p><strong>UTM Campaign:</strong> {{ selectedOrder.utm_campaign || 'N/A' }}</p>
-            <p><strong>IP Address:</strong> {{ selectedOrder.ip }}</p>
-            <p><strong>Website Reffer:</strong> {{ selectedOrder.website_referrer }}</p>
-
-          </div>
+        <!-- 🔴 UTM-метки -->
+        <div class="bg-red-100 rounded-lg p-4 border border-red-300 shadow-sm">
+            <h3 class="text-lg font-semibold mb-3">📈 Маркетингові дані (UTM-метки)</h3>
+            <div class="grid grid-cols-3 gap-4 text-sm">
+                <p><strong>UTM Source:</strong> {{ selectedOrder.utm_source || '-' }}</p>
+                <p><strong>UTM Medium:</strong> {{ selectedOrder.utm_medium || '-' }}</p>
+                <p><strong>UTM Campaign:</strong> {{ selectedOrder.utm_campaign || '-' }}</p>
+                <p><strong>UTM Term:</strong> {{ selectedOrder.utm_term || '-' }}</p>
+                <p><strong>UTM Content:</strong> {{ selectedOrder.utm_content || '-' }}</p>
+                <p><strong>IP:</strong> {{ selectedOrder.ip }}</p>
+                <p><strong>Website Referrer:</strong> {{ selectedOrder.website_referrer }}</p>
+            </div>
         </div>
 
-        <!-- Основная информация -->
-        <div class="border-b bg-[#eee] rounded-sm p-2 text-normal">
-          <div class="grid grid-cols-3 gap-4 mt-2 justify-items-center">
-            <p><strong>Замовлення створено:</strong> {{ formatDateTime(selectedOrder.created_at) }}</p>
-            <p><strong>Замовлення оновлено:</strong> {{ formatDateTime(selectedOrder.updated_at) }}</p>
-            <p><strong>Дата отримання клієнтом:</strong> {{ formatDateTime(selectedOrder.delivery_date) }}</p>
-
-          </div>
+        <!-- ⚪ Дополнительные данные -->
+        <div class="bg-gray-100 rounded-lg p-4 border border-gray-300 shadow-sm">
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <p><strong>Замовлення створено:</strong> {{ formatDateTime(selectedOrder.created_at) }}</p>
+                <p><strong>Замовлення оновлено:</strong> {{ formatDateTime(selectedOrder.updated_at) }}</p>
+            </div>
         </div>
+    </div>
+</Dialog>
 
-
-      </div>
-    </Dialog>
 
 
   </Layout>
