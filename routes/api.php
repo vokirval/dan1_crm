@@ -30,14 +30,14 @@ Route::post('/inpost-webhook', function (Request $request) {
         // Ищем заказ по inpost_id (InPost ID)
         $order = Order::where('inpost_id', $webhookData['inpost_id'])->first();
 
-        $alreadySent = OrderFulfillment::where('order_id', $order->id)->where('sent', true)->exists();
-
         if (!$order) {
             Log::warning('Order not found for InPost ID.', ['inpost_id' => $webhookData['inpost_id']]);
             return response()->json([
                 'message' => 'Order not found.',
             ], 404);
         }
+
+        $alreadySent = OrderFulfillment::where('order_id', $order->id)->where('sent', true)->exists();
 
         // Обновляем данные заказа
         $updateData = [];
