@@ -267,7 +267,7 @@ const statuses = [
 
           <IftaLabel>
             <InputNumber v-model="form.cost" id="prdcost" locale="ua-UA" :minFractionDigits="2" class="w-full" />
-            <label for="prdcost">Собівартість</label>
+            <label for="prdcost">Собівартість Нетто</label>
           </IftaLabel>
 
           <IftaLabel>

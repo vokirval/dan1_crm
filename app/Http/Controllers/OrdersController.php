@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
+
 use App\Models\User;
 use Inertia\Inertia;
 use App\Models\Group;
@@ -88,6 +88,7 @@ class OrdersController extends Controller
         if ($request->has('sent_at_to')) {
             $ordersQuery->whereDate('sent_at', '<=', $request->input('sent_at_to'));
         }
+        
         
 
         if ($request->has('product_id')) {
@@ -217,7 +218,7 @@ class OrdersController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
             'delivery_date' => 'nullable|date_format:Y-m-d H:i',
-            'sent_at' => 'nullable|date_format:Y-m-d H:i:s',
+            'sent_at' => 'nullable|datetime',
             'payment_date' => 'nullable|date_format:Y-m-d H:i',
             'tracking_number' => 'nullable|string|max:255', // Новое поле
             'is_paid' => 'nullable|boolean', // Новое поле

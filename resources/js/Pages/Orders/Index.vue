@@ -240,7 +240,6 @@ const formatDateTime = (date) => {
   if (!date) return "-";
 
   return new Intl.DateTimeFormat("pl-PL", {
-    timeZone: "Europe/Warsaw",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -747,6 +746,25 @@ const getTooltipText = (items) => {
             optionLabel="name" optionValue="id" placeholder="Доставка" class="w-full" />
         </template>
       </Column>
+      <Column :showFilterMenu="false" header="Дата отримання" sortable>
+        <template #body="{ data }">
+          {{ formatDateTime(data.delivery_date) }}
+        </template>
+        <template #filter>
+          <DatePicker v-model="filters.delivery_date" selectionMode="range" showButtonBar :manualInput="false"
+            placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
+        </template>
+      </Column>
+
+      <Column :showFilterMenu="false" header="Відправлено" sortable>
+        <template #body="{ data }">
+          {{ formatDateTime(data.sent_at) }}
+        </template>
+        <template #filter>
+          <DatePicker v-model="filters.sent_at" selectionMode="range" showButtonBar :manualInput="false"
+            placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
+        </template>
+      </Column>
       <Column :showFilterMenu="false" field="tracking_number" header="Трекинг" sortable>
         <template #filter>
           <InputText type="search" v-model="filters.tracking_number" placeholder="Трекинг" class="w-full" size="small" />
@@ -805,7 +823,7 @@ const getTooltipText = (items) => {
           {{ formatDateTime(data.created_at) }}
         </template>
         <template #filter>
-          <DatePicker v-model="filters.created_at" selectionMode="range" :manualInput="false"
+          <DatePicker v-model="filters.created_at" selectionMode="range" showButtonBar :manualInput="false"
             placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
         </template>
       </Column>
@@ -815,27 +833,7 @@ const getTooltipText = (items) => {
           {{ formatDateTime(data.updated_at) }}
         </template>
         <template #filter>
-          <DatePicker v-model="filters.updated_at" selectionMode="range" :manualInput="false"
-            placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
-        </template>
-      </Column>
-
-      <Column :showFilterMenu="false" header="Дата отримання" sortable>
-        <template #body="{ data }">
-          {{ formatDateTime(data.delivery_date) }}
-        </template>
-        <template #filter>
-          <DatePicker v-model="filters.delivery_date" selectionMode="range" :manualInput="false"
-            placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
-        </template>
-      </Column>
-
-      <Column :showFilterMenu="false" header="Відправлено" sortable>
-        <template #body="{ data }">
-          {{ formatDateTime(data.sent_at) }}
-        </template>
-        <template #filter>
-          <DatePicker v-model="filters.sent_at" selectionMode="range" :manualInput="false"
+          <DatePicker v-model="filters.updated_at" selectionMode="range" showButtonBar :manualInput="false"
             placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
         </template>
       </Column>

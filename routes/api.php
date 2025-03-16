@@ -60,6 +60,12 @@ Route::post('/inpost-webhook', function (Request $request) {
                 $updateData['delivery_date'] = Carbon::now()->format('Y-m-d H:i');
                 $logMessages[] = 'Замовлення доставлено, Дата отримання: ' . $updateData['delivery_date'];
             }
+
+            // Если статус "delivered", записываем дату доставки
+            if (strtolower($webhookData['inpost_status']) === 'collected_from_sender') {
+                $updateData['sent_at'] = Carbon::now()->format('Y-m-d H:i');
+                $logMessages[] = 'Замовлення відправлено, Дата відправки: ' . $updateData['sent_at'];
+            }
         }
 
         if (!empty($updateData)) {
@@ -110,7 +116,6 @@ Route::post('/change_status/{status_id}', function (Request $request, $status_id
         // Получаем данные из вебхукаs
         $webhookData = $request->validate([
             'external_id' => 'required|string', // Айдишник заказа
-            'tracking_number' => 'nullable|string', // Трекинг номер, может быть null
         ]);
 		
         // Ищем заказ по external_id
@@ -128,12 +133,12 @@ Route::post('/change_status/{status_id}', function (Request $request, $status_id
             'order_status_id' => $status_id,
         ]);
 
-        // Обновляем трекинг номер, если он присутствует
-        if (!empty($webhookData['tracking_number'])) {
-            $order->update([
-                'tracking_number' => $webhookData['tracking_number'],
-            ]);
-        }
+        OrderFulfillment::create([
+            'order_id' => $order->id,
+            'sent' => true,
+            'comment' => '[Webhook Fulfillment] Зміна статуса на: ' . $status_id,
+        ]);
+
 
         return response()->json([
             'message' => 'Order status updated successfully.',

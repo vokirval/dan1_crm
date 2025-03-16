@@ -248,7 +248,7 @@ const confirmDelete = (event, data) => {
                                         <IftaLabel class="mt-5">
                                             <InputNumber v-model="form.cost" id="product_cost" locale="ua-UA"
                                                 :minFractionDigits="2" fluid />
-                                            <label for="product_cost">Собівартість</label>
+                                            <label for="product_cost">Собівартість Нетто</label>
                                         </IftaLabel>
                                         <div class="mt-2 mb-5">
                                             <Fieldset legend="Деталі посилки" :toggleable="true" :collapsed="false">
@@ -302,7 +302,7 @@ const confirmDelete = (event, data) => {
                                     <IftaLabel class="mt-5">
                                         <InputNumber v-model="variationForm.cost" id="varcost" class="w-full"
                                             locale="ua-UA" :minFractionDigits="2" />
-                                        <label for="varcost">Собівартість</label>
+                                        <label for="varcost">Собівартість Нетто</label>
                                     </IftaLabel>
                                     <IftaLabel class="mt-5">
                                         <InputNumber v-model="variationForm.stock" id="varstock" class="w-full" />
