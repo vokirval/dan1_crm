@@ -24,6 +24,7 @@ class OrdersController extends Controller
     public function index(Request $request)
     {
 
+
         $perPage = min($request->input('per_page', 10), 100);
         $sortBy = $request->input('sort_by', 'created_at');
         $sortDirection = $request->input('sort_direction', 'desc');
@@ -80,6 +81,14 @@ class OrdersController extends Controller
         if ($request->has('updated_at_to')) {
             $ordersQuery->whereDate('updated_at', '<=', $request->input('updated_at_to'));
         }
+        if ($request->has('sent_at_from')) {
+            $ordersQuery->whereDate('sent_at', '>=', $request->input('sent_at_from'));
+        }
+        
+        if ($request->has('sent_at_to')) {
+            $ordersQuery->whereDate('sent_at', '<=', $request->input('sent_at_to'));
+        }
+        
 
         if ($request->has('product_id')) {
             $ordersQuery->whereHas('items', function ($query) use ($request) {
@@ -208,6 +217,7 @@ class OrdersController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
             'delivery_date' => 'nullable|date_format:Y-m-d H:i',
+            'sent_at' => 'nullable|date_format:Y-m-d H:i:s',
             'payment_date' => 'nullable|date_format:Y-m-d H:i',
             'tracking_number' => 'nullable|string|max:255', // Новое поле
             'is_paid' => 'nullable|boolean', // Новое поле
@@ -367,6 +377,7 @@ class OrdersController extends Controller
             'sub_ids' => 'array',
             'sub_ids.*' => 'nullable|string|max:255',
             'delivery_date' => 'nullable|date',
+            'sent_at' => 'nullable|date',
             'payment_date' => 'nullable|date',
             'tracking_number' => 'nullable|string|max:255', // Новое поле
             'is_paid' => 'nullable|boolean', // Новое поле

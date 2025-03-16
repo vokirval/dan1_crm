@@ -35,6 +35,8 @@ const filters = ref({
   is_paid: "",
   delivery_method_id: null,
   tracking_number: "",
+  delivery_date: null,
+  sent_at: null,
   group_id: null,
   ip: "",
   website_referrer: "",
@@ -98,9 +100,6 @@ const formatDateForApi = (date) => {
     throw new TypeError("Invalid date provided");
   }
 
-  // Преобразуем в локальное время (учитывая часовой пояс)
-  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-
   const pad = (num) => String(num).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
     date.getDate()
@@ -114,6 +113,8 @@ const loadOrders = () => {
   let activeFilters = { ...filters.value };
   delete activeFilters.created_at;
   delete activeFilters.updated_at;
+  delete activeFilters.sent_at;
+  delete activeFilters.delivery_date;
 
   // Если даты выбраны, форматируем их в Y-m-d
   if (filters.value.created_at?.length === 2) {
@@ -124,6 +125,16 @@ const loadOrders = () => {
   if (filters.value.updated_at?.length === 2) {
     activeFilters.updated_at_from = formatDateForApi(filters.value.updated_at[0]);
     activeFilters.updated_at_to = formatDateForApi(filters.value.updated_at[1]);
+  }
+
+  if (filters.value.sent_at?.length === 2) {
+    activeFilters.sent_at_from = formatDateForApi(filters.value.sent_at[0]);
+    activeFilters.sent_at_to = formatDateForApi(filters.value.sent_at[1]);
+  }
+
+  if (filters.value.delivery_date?.length === 2) {
+    activeFilters.delivery_date_from = formatDateForApi(filters.value.delivery_date[0]);
+    activeFilters.delivery_date_to = formatDateForApi(filters.value.delivery_date[1]);
   }
 
   // Убираем пустые параметры
@@ -202,6 +213,8 @@ onMounted(() => {
     utm_campaign: inertiaProps.filters.utm_campaign || "",
     utm_content: inertiaProps.filters.utm_content || "",
     utm_term: inertiaProps.filters.utm_term || "",
+    delivery_date: inertiaProps.filters.delivery_date || "",
+    sent_at: inertiaProps.filters.sent_at || "",
 
   };
 
@@ -227,6 +240,7 @@ const formatDateTime = (date) => {
   if (!date) return "-";
 
   return new Intl.DateTimeFormat("pl-PL", {
+    timeZone: "Europe/Warsaw",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -796,14 +810,32 @@ const getTooltipText = (items) => {
         </template>
       </Column>
 
-
-
       <Column :showFilterMenu="false" header="updated_at" sortable>
         <template #body="{ data }">
           {{ formatDateTime(data.updated_at) }}
         </template>
         <template #filter>
           <DatePicker v-model="filters.updated_at" selectionMode="range" :manualInput="false"
+            placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
+        </template>
+      </Column>
+
+      <Column :showFilterMenu="false" header="Дата отримання" sortable>
+        <template #body="{ data }">
+          {{ formatDateTime(data.delivery_date) }}
+        </template>
+        <template #filter>
+          <DatePicker v-model="filters.delivery_date" selectionMode="range" :manualInput="false"
+            placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
+        </template>
+      </Column>
+
+      <Column :showFilterMenu="false" header="Відправлено" sortable>
+        <template #body="{ data }">
+          {{ formatDateTime(data.sent_at) }}
+        </template>
+        <template #filter>
+          <DatePicker v-model="filters.sent_at" selectionMode="range" :manualInput="false"
             placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
         </template>
       </Column>

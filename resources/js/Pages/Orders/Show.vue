@@ -245,6 +245,7 @@ const form = ref({
     group_id: order.value.group_id,
     responsible_user_id: order.value.responsible_user_id,
     delivery_date: order.value.delivery_date,
+    sent_at: order.value.sent_at,
     payment_date: order.value.payment_date,
     tracking_number: order.value.tracking_number,
     is_paid: order.value.is_paid,
@@ -255,6 +256,7 @@ const updateOrder = () => {
     const dataToSubmit = {
         ...form.value,
         delivery_date: formatDateForApi(form.value.delivery_date),
+        sent_at: formatDateForApi(form.value.sent_at),
         payment_date: formatDateForApi(form.value.payment_date),
     };
 
@@ -1107,7 +1109,12 @@ const copyToClipboard = async (caption) => {
                         <IftaLabel class="mt-5">
                             <DatePicker id="delivery_date" dateFormat="yy-mm-dd" v-model="form.delivery_date" showTime
                                 hourFormat="24" fluid />
-                            <label for="delivery_date">Дата отримання клієнтом</label>
+                            <label for="delivery_date">Дата отримання</label>
+                        </IftaLabel>
+                        <IftaLabel class="mt-5">
+                            <DatePicker id="sent_at" dateFormat="yy-mm-dd" v-model="form.sent_at" showTime
+                                hourFormat="24" fluid />
+                            <label for="sent_at">Відправлено</label>
                         </IftaLabel>
                         <div class="mt-5 flex gap-3">
                             <IftaLabel class="w-full">

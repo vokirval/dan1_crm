@@ -44,6 +44,7 @@ class Order extends Model
         'sub_id9',
         'sub_id10',
         'delivery_date', // Новое поле
+        'sent_at',
         'payment_date',  // Новое поле
         'tracking_number', // Добавлено
         'is_paid',         // Добавлено
