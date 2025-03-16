@@ -20,6 +20,7 @@ class OrderController extends Controller
             'delivery_price' => 'nullable|numeric|min:0',
             'delivery_fullname' => 'nullable|string|max:255',
             'delivery_address' => 'nullable|string|max:255',
+            'delivery_address_number' => 'nullable|string|max:255',
             'delivery_second_address' => 'nullable|string|max:255',
             'delivery_postcode' => 'nullable|string|max:20',
             'delivery_city' => 'nullable|string|max:100',
