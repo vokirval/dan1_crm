@@ -1104,7 +1104,7 @@ const copyToClipboard = async (caption) => {
                     <Fieldset legend="Додаткові поля" :toggleable="true" :collapsed="true">
                         <div class="w-full">
                             <label for="tracking_number">ТТН</label>
-                            <InputText id="tracking_number" v-model="form.tracking_number" disabled class="w-full" />
+                            <InputText id="tracking_number" v-model="form.tracking_number" class="w-full" />
                         </div>
                         <IftaLabel class="mt-5">
                             <DatePicker id="delivery_date" dateFormat="yy-mm-dd" v-model="form.delivery_date" showTime
