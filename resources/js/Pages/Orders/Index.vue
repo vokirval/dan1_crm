@@ -290,11 +290,17 @@ const totalAmount = (selectedOrder) => {
 
 
 // Триггер для массового удаления
-const triggerMassDelete = (event) => {
+const triggerMassDelete = async (event) => {
   if (!selectedProduct.value.length) {
-    toast.add({ severity: 'warn', summary: 'Ошибка', detail: 'Выберите хотя бы один заказ.', life: 3000, });
+    toast.add({
+      severity: 'warn',
+      summary: 'Ошибка',
+      detail: 'Выберите хотя бы один заказ.',
+      life: 3000,
+    });
     return;
   }
+
   confirm.require({
     target: event.currentTarget,
     message: "Ви дійсно хочете видалити вибрані замовлення?",
@@ -306,27 +312,45 @@ const triggerMassDelete = (event) => {
     acceptProps: {
       label: "Так",
     },
-    accept: () => {
-      router.post('/orders/mass-delete', { order_ids: selectedProduct.value.map(o => o.id) }, {
-        onSuccess: () => {
-          selectedProduct.value = [];
-          toast.add({ severity: 'success', summary: 'Успіх!', detail: 'Замовлення успішно видалені!', life: 3000, });
-          loadOrders();
-        },
-        onError: () => {
-          toast.add({ severity: 'error', summary: 'Помилка', detail: 'Помилка...', life: 3000, });
-        },
-      });
+    accept: async () => {
+      try {
+        await axios.post('/orders/mass-delete', {
+          order_ids: selectedProduct.value.map(o => o.id),
+        });
+
+        selectedProduct.value = [];
+        toast.add({
+          severity: 'success',
+          summary: 'Успіх!',
+          detail: 'Замовлення успішно видалені!',
+          life: 3000,
+        });
+
+        loadOrders(); // Перезагрузка заказов
+      } catch (error) {
+        toast.add({
+          severity: 'error',
+          summary: 'Помилка',
+          detail: error.response?.data?.message || 'Помилка видалення замовлень.',
+          life: 3000,
+        });
+      }
     },
   });
 };
 
-// Триггер для массовой смены статуса
-const triggerMassUpdateStatus = (event) => {
+
+const triggerMassUpdateStatus = async (event) => {
   if (!selectedProduct.value.length || !selectedStatus.value) {
-    toast.add({ severity: 'warn', summary: 'Ошибка', detail: 'Выберите заказы и статус.', life: 3000, });
+    toast.add({
+      severity: 'warn',
+      summary: 'Ошибка',
+      detail: 'Выберите заказы и статус.',
+      life: 3000,
+    });
     return;
   }
+
   confirm.require({
     target: event.currentTarget,
     message: "Ви дійсно хочете оновити статус у вибраних замовленнях?",
@@ -338,31 +362,48 @@ const triggerMassUpdateStatus = (event) => {
     acceptProps: {
       label: "Так",
     },
-    accept: () => {
-      router.post('/orders/mass-update-status', {
-        order_ids: selectedProduct.value.map(o => o.id),
-        order_status_id: selectedStatus.value
-      }, {
-        onSuccess: () => {
-          selectedProduct.value = [];
-          toast.add({ severity: 'success', summary: 'Успішно!', detail: 'Статуси оновлено.', life: 3000, });
-          selectedStatus.value = null;
-          loadOrders();
-        },
-        onError: () => {
-          toast.add({ severity: 'error', summary: 'Помилка', detail: 'Помилка...', life: 3000, });
-        },
-      });
+    accept: async () => {
+      try {
+        await axios.post('/orders/mass-update-status', {
+          order_ids: selectedProduct.value.map(o => o.id),
+          status_id: selectedStatus.value
+        });
+
+        toast.add({
+          severity: 'success',
+          summary: 'Успішно!',
+          detail: 'Статуси оновлено.',
+          life: 3000,
+        });
+
+        selectedProduct.value = [];
+        selectedStatus.value = null;
+        loadOrders(); // Перезагрузка заказов
+      } catch (error) {
+        toast.add({
+          severity: 'error',
+          summary: 'Помилка',
+          detail: error.response?.data?.message || 'Помилка оновлення статусів.',
+          life: 3000,
+        });
+      }
     },
   });
 };
 
+
 // Триггер для массового изменения комментариев
-const triggerMassUpdateComment = (event, comment) => {
+const triggerMassUpdateComment = async (event, comment) => {
   if (!selectedProduct.value.length) {
-    toast.add({ severity: 'warn', summary: 'Ошибка', detail: 'Выберите хотя бы один заказ.', life: 3000, });
+    toast.add({
+      severity: 'warn',
+      summary: 'Ошибка',
+      detail: 'Выберите хотя бы один заказ.',
+      life: 3000,
+    });
     return;
   }
+
   confirm.require({
     target: event.currentTarget,
     message: "Ви дійсно хочете оновити коментар у вибраних замовленнях?",
@@ -374,22 +415,31 @@ const triggerMassUpdateComment = (event, comment) => {
     acceptProps: {
       label: "Так",
     },
-    accept: () => {
-      router.post('/orders/mass-update-comment', {
-        order_ids: selectedProduct.value.map(o => o.id),
-        comment
-      }, {
-        onSuccess: () => {
-          selectedProduct.value = [];
-          toast.add({ severity: 'success', summary: 'Успіх!', detail: 'Коментар оновлено!', life: 3000, });
-          commentDialog.value = false;
-          loadOrders();
-        },
-        onError: () => {
-          commentDialog.value = false;
-          toast.add({ severity: 'error', summary: 'Помилка!', detail: 'Помилка...', life: 3000, });
-        },
-      });
+    accept: async () => {
+      try {
+        await axios.post('/orders/mass-update-comment', {
+          order_ids: selectedProduct.value.map(o => o.id),
+          comment
+        });
+
+        commentDialog.value = false;
+        toast.add({
+          severity: 'success',
+          summary: 'Успіх!',
+          detail: 'Коментар оновлено!',
+          life: 3000,
+        });
+
+        loadOrders(); // Перезагрузка заказов
+      } catch (error) {
+        commentDialog.value = false;
+        toast.add({
+          severity: 'error',
+          summary: 'Помилка!',
+          detail: error.response?.data?.message || 'Помилка оновлення коментаря.',
+          life: 3000,
+        });
+      }
     },
   });
 };

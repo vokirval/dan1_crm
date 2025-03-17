@@ -653,7 +653,7 @@ const splitFullName = (fullName) => {
     };
 };
 
-const { firstName, lastName } = splitFullName(order.value.delivery_fullname);
+
 
 const inpostData = ref({});
 
@@ -669,6 +669,10 @@ const commentLength = computed(() => commentText.value.length);
 
 const openInpostModal = () => {
     // Формируем данные для comment и reference
+
+    order.value = { ...order.value, ...form.value };
+    const { firstName, lastName } = splitFullName(order.value.delivery_fullname);
+
     const commentParts = [];
     const referenceParts = [];
 
