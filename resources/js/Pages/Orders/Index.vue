@@ -745,7 +745,7 @@ const copyOrderDetails = async () => {
           <InputText type="search" v-model="filters.email" placeholder="Email" class="w-full" size="small" />
         </template>
       </Column>
-      <Column :showFilterMenu="false" field="comment" header="Коментар" bodyClass="cursor-help"
+      <Column :showFilterMenu="false" field="comment" header="Коментар" bodyClass="cursor-help" sortField="comment" :sortable="true"
         bodyStyle="max-width:250px">
         <template #filter>
           <InputText type="search" v-model="filters.comment" placeholder="Коментар" class="w-full" size="small" />
@@ -797,7 +797,7 @@ const copyOrderDetails = async () => {
         </template>
       </Column>
 
-      <Column :showFilterMenu="false" field="responsible_user.name" header="Відповідальний">
+      <Column :showFilterMenu="false" field="responsible_user.name" header="Відповідальний" sortField="responsible_user_id" :sortable="true">
         <template #filter>
           <Select v-model="filters.responsible_user_id" @click="loadUsers" :options="users"
             :showClear="!!filters.responsible_user_id" size="small" filter filterPlaceholder="Пошук..." optionLabel="name"
@@ -810,10 +810,10 @@ const copyOrderDetails = async () => {
           <InputText type="search" v-model="filters.delivery_city" placeholder="Місто" class="w-full" size="small" />
         </template>
       </Column>
-      <Column :showFilterMenu="false" field="delivery_address" header="Адреса" />
-      <Column :showFilterMenu="false" field="delivery_postcode" header="Зіп код" />
+      <Column :showFilterMenu="false" field="delivery_address" header="Адреса" sortField="delivery_address" :sortable="true" />
+      <Column :showFilterMenu="false" field="delivery_postcode" header="Зіп код" sortField="delivery_postcode" :sortable="true" />
 
-      <Column :showFilterMenu="false" field="payment_method.name" header="Метод оплати">
+      <Column :showFilterMenu="false" field="payment_method.name" header="Метод оплати" sortField="payment_method_id" :sortable="true">
         <template #filter>
           <Select v-model="filters.payment_method_id" @click="loadPaymentMethods"
             :showClear="!!filters.payment_method_id" size="small" filter filterPlaceholder="Пошук..." :options="payment_methods"
@@ -839,14 +839,14 @@ const copyOrderDetails = async () => {
           </span>
         </template>
       </Column>
-      <Column :showFilterMenu="false" field="delivery_method.name" header="Доставка">
+      <Column :showFilterMenu="false" field="delivery_method.name" header="Доставка" sortField="delivery_method_id" :sortable="true">
         <template #filter>
           <Select v-model="filters.delivery_method_id" @click="loadDeliveryMethods"
             :showClear="!!filters.delivery_method_id" size="small" filter filterPlaceholder="Пошук..." :options="delivery_methods"
             optionLabel="name" optionValue="id" placeholder="Доставка" class="w-full" />
         </template>
       </Column>
-      <Column :showFilterMenu="false" header="Дата отримання" sortable>
+      <Column :showFilterMenu="false" header="Дата отримання" sortField="delivery_date" sortable>
         <template #body="{ data }">
           {{ formatDateTime(data.delivery_date) }}
         </template>
@@ -856,7 +856,7 @@ const copyOrderDetails = async () => {
         </template>
       </Column>
 
-      <Column :showFilterMenu="false" header="Відправлено" sortable>
+      <Column :showFilterMenu="false" header="Відправлено" sortField="sent_at" sortable>
         <template #body="{ data }">
           {{ formatDateTime(data.sent_at) }}
         </template>
@@ -872,7 +872,7 @@ const copyOrderDetails = async () => {
       </Column>
 
 
-      <Column :showFilterMenu="false" field="group.name" header="Група">
+      <Column :showFilterMenu="false" field="group.name" header="Група" sortField="group_id" :sortable="true">
         <template #filter>
           <Select v-model="filters.group_id" @click="loadGroups" :showClear="!!filters.group_id" size="small" filter
             filterPlaceholder="Пошук..." :options="groups" optionLabel="name" optionValue="id" placeholder="Група"

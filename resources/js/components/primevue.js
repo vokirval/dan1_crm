@@ -30,6 +30,9 @@ import Inplace from 'primevue/inplace';
 import Toolbar from 'primevue/toolbar';
 import Menu from 'primevue/menu';
 
+import Message from 'primevue/message';
+
+
 
 import Timeline from 'primevue/timeline';
 
@@ -145,6 +148,7 @@ export function setupPrimeVue(app) {
     app.component('InputGroupAddon', InputGroupAddon);
     app.component('Toolbar', Toolbar);
     app.component('Timeline', Timeline);
+    app.component('Message', Message);
     
     
 

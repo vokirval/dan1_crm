@@ -1038,7 +1038,9 @@ const copyToClipboard = async (caption) => {
                         <div class="mb-4 grid grid-cols-2 gap-3">
                             <div>
                                 <label for="phone">Телефон</label>
-                                <InputText id="phone" v-model="form.phone" class="w-full" />
+                                <InputText id="phone" v-model="form.phone" class="w-full"  :invalid="form.phone.length !== 6" />
+                                <Message v-if="form.phone.length !== 6" size="small" severity="error" variant="simple">В номері більше або меньше 6 символів</Message>
+
                             </div>
                             <div class="flex">
                                 <div class="w-full">

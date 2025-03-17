@@ -34,7 +34,7 @@ class OrdersController extends Controller
         $user = auth()->user();
 
         // Разрешенные поля для сортировки
-        $allowedSortFields = ['id', 'created_at', 'updated_at', 'delivery_fullname', 'phone', 'email', 'delivery_city', 'order_status_id', 'is_paid'];
+        $allowedSortFields = ['id', 'created_at', 'updated_at', 'sent_at', 'delivery_date', 'delivery_fullname', 'phone', 'email', 'delivery_city', 'order_status_id', 'is_paid', 'comment','responsible_user_id', 'delivery_address', 'delivery_postcode', 'delivery_method_id', 'payment_method_id', 'group_id', 'tracking_number', 'ip', 'website_referrer', 'utm_source', 'utm_medium', 'utm_campaign','utm_content', 'utm_term'];
 
         // Проверка сортировки
         if (!in_array($sortBy, $allowedSortFields)) {
