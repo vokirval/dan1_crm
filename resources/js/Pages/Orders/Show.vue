@@ -1138,9 +1138,7 @@ const copyToClipboard = async (caption) => {
                     </Fieldset>
                 </div>
 
-                <Button size="large" @click="updateOrder" class="mt-4 w-full">
-                    <FolderSync class="w-6 h-6" /> Зберегти замовлення
-                </Button>
+                
             </div>
 
             <div>
@@ -1342,6 +1340,9 @@ const copyToClipboard = async (caption) => {
                         </table>
                     </Fieldset>
                 </div>
+                <Button size="large" @click="updateOrder" class="mt-4 w-full">
+                    <FolderSync class="w-6 h-6" /> Зберегти замовлення
+                </Button>
             </div>
         </div>
 
@@ -1415,7 +1416,7 @@ const copyToClipboard = async (caption) => {
                             <th class="border border-gray-300 p-2">
                                 ID замовлення
                             </th>
-                            <th class="border border-gray-300 p-2">Клієнт</th>
+                            <th class="border border-gray-300 p-2">Контакт</th>
                             <th class="border border-gray-300 p-2">Телефон</th>
                             <th class="border border-gray-300 p-2">Email</th>
                             <th class="border border-gray-300 p-2">IP</th>
@@ -1425,7 +1426,8 @@ const copyToClipboard = async (caption) => {
                             <th class="border border-gray-300 p-2">
                                 Метод оплати
                             </th>
-                            <th class="border border-gray-300 p-2">Действия</th>
+                            <th class="border border-gray-300 p-2">Дата замовлення</th>
+                            <th class="border border-gray-300 p-2">Дія</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1502,6 +1504,9 @@ const copyToClipboard = async (caption) => {
                             </td>
                             <td class="border border-gray-300 p-2">
                                 {{ duplicate.payment_method?.name }}
+                            </td>
+                            <td class="border border-gray-300 p-2">
+                                {{ formatDateTime(duplicate.created_at) }}
                             </td>
                             <td class="border border-gray-300 p-2 text-center">
                                 <Button size="small" @click="openOrderDialog(duplicate)">
