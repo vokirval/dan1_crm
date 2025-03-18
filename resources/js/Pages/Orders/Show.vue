@@ -1346,8 +1346,8 @@ const copyToClipboard = async (caption) => {
             </div>
         </div>
 
-        <div class="flex gap-4 justify-items-center items-center my-4">
-            <div class="w-2/3">
+        <div class="grid grid-cols-2 gap-4 justify-items-center my-4">
+            <div class="w-full">
                 <Fieldset legend="Email історія" :toggleable="true" :collapsed="false">
                     <table class="table-auto w-full border-collapse border border-gray-300 text-sm my-2">
                         <thead>
@@ -1390,7 +1390,7 @@ const copyToClipboard = async (caption) => {
                 </Fieldset>
             </div>
 
-            <div class="w-1/3">
+            <div class="w-full">
                 <Fieldset legend="Історія замовлення" :toggleable="true" :collapsed="false">
                     <Timeline :value="order.fullfull_history">
                         <template #opposite="slotProps">
