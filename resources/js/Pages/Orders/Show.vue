@@ -1346,62 +1346,63 @@ const copyToClipboard = async (caption) => {
             </div>
         </div>
 
-        <div class="my-4">
-            <Fieldset legend="Email історія" :toggleable="true" :collapsed="false">
-                <table class="table-auto w-full border-collapse border border-gray-300 text-sm my-2">
-                    <thead>
-                        <tr>
-                            <th class="border border-gray-300 p-2">Дата відправки</th>
-                            <th class="border border-gray-300 p-2">Статус</th>
-                            <th class="border border-gray-300 p-2">Email</th>
-                            <th class="border border-gray-300 p-2">Тема</th>
-                            <th class="border border-gray-300 p-2">Помилка</th>
-                            <th class="border border-gray-300 p-2">Лист</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="email in order.email_history" :key="email.id">
-                            <td class="border border-gray-300 p-2">
-                                {{ email.sent_at || "Не відправлено" }}
-                            </td>
-                            <td class="border border-gray-300 p-2">
-                                <span v-if="email.status === 'success'" class="text-green-600">Успішно</span>
-                                <span v-else class="text-red-600">Помилка</span>
-                            </td>
-                            <td class="border border-gray-300 p-2">
-                                {{ email.to_email }}
-                            </td>
-                            <td class="border border-gray-300 p-2">
-                                {{ email.subject }}
-                            </td>
-                            <td class="border border-gray-300 p-2">
-                                {{ email.error_message || "-" }}
-                            </td>
-                            <td class="border border-gray-300 p-2">
-                                <Button label="Показати лист" @click="
-                                    bodyEmail = email.body;
-                                showBodyEmail = true;
-                                " />
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </Fieldset>
-        </div>
+        <div class="grid grid-cols-2 gap-4 justify-items-center items-center my-4">
+            <div class="w-full">
+                <Fieldset legend="Email історія" :toggleable="true" :collapsed="false">
+                    <table class="table-auto w-full border-collapse border border-gray-300 text-sm my-2">
+                        <thead>
+                            <tr>
+                                <th class="border border-gray-300 p-2">Дата відправки</th>
+                                <th class="border border-gray-300 p-2">Статус</th>
+                                <th class="border border-gray-300 p-2">Email</th>
+                                <th class="border border-gray-300 p-2">Тема</th>
+                                <th class="border border-gray-300 p-2">Помилка</th>
+                                <th class="border border-gray-300 p-2">Лист</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="email in order.email_history" :key="email.id">
+                                <td class="border border-gray-300 p-2">
+                                    {{ email.sent_at || "Не відправлено" }}
+                                </td>
+                                <td class="border border-gray-300 p-2">
+                                    <span v-if="email.status === 'success'" class="text-green-600">Успішно</span>
+                                    <span v-else class="text-red-600">Помилка</span>
+                                </td>
+                                <td class="border border-gray-300 p-2">
+                                    {{ email.to_email }}
+                                </td>
+                                <td class="border border-gray-300 p-2">
+                                    {{ email.subject }}
+                                </td>
+                                <td class="border border-gray-300 p-2">
+                                    {{ email.error_message || "-" }}
+                                </td>
+                                <td class="border border-gray-300 p-2">
+                                    <Button label="Показати лист" @click="
+                                        bodyEmail = email.body;
+                                    showBodyEmail = true;
+                                    " />
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </Fieldset>
+            </div>
 
-        <div class="my-4">
-            <Fieldset legend="Історія замовлення" :toggleable="true" :collapsed="false">
-                <Timeline :value="order.fullfull_history">
-                    <template #opposite="slotProps">
-                        <small class="text-surface-500 dark:text-surface-400">{{ formatDateTime(slotProps.item.created_at) }}</small>
-                    </template>
-                    <template #content="slotProps">
-                        {{slotProps.item.comment}}
-                    </template>
-                </Timeline>
-            </Fieldset>
+            <div class="w-full">
+                <Fieldset legend="Історія замовлення" :toggleable="true" :collapsed="false">
+                    <Timeline :value="order.fullfull_history">
+                        <template #opposite="slotProps">
+                            <small class="text-surface-500 dark:text-surface-400">{{ formatDateTime(slotProps.item.created_at) }}</small>
+                        </template>
+                        <template #content="slotProps">
+                            {{slotProps.item.comment}}
+                        </template>
+                    </Timeline>
+                </Fieldset>
+            </div>
         </div>
-
 
 
         
