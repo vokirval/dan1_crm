@@ -88,6 +88,14 @@ class OrdersController extends Controller
         if ($request->has('sent_at_to')) {
             $ordersQuery->whereDate('sent_at', '<=', $request->input('sent_at_to'));
         }
+
+        if ($request->has('delivery_date_from')) {
+            $ordersQuery->whereDate('delivery_date', '>=', $request->input('delivery_date_from'));
+        }
+        
+        if ($request->has('delivery_date_to')) {
+            $ordersQuery->whereDate('delivery_date', '<=', $request->input('delivery_date_to'));
+        }
         
         
 

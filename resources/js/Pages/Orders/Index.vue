@@ -928,7 +928,7 @@ const copyOrderDetails = async () => {
         </template>
       </Column>
 
-      <Column :showFilterMenu="false" header="updated_at" sortable>
+      <Column :showFilterMenu="false" header="updated_at" sortField="updated_at" :sortable="true">
         <template #body="{ data }">
           {{ formatDateTime(data.updated_at) }}
         </template>
