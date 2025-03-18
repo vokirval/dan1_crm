@@ -580,7 +580,7 @@ const checkAddress = async () => {
         const apiCity = bestMatch.properties.city || "";
 
         // Данные, которые ввел пользователь
-        const userAddress = cleanedAddress+' '+form.value.delivery_address_number;
+        const userAddress = cleanedAddress + ' ' + form.value.delivery_address_number;
         const userPostcode = form.value.delivery_postcode.trim();
         const userCity = form.value.delivery_city.trim();
 
@@ -661,7 +661,7 @@ const inpostData = ref({});
 const referenceLimit = 100;
 const commentLimit = 100;
 
-const referenceText = ref(""); 
+const referenceText = ref("");
 const commentText = ref("");
 const referenceLength = computed(() => referenceText.value.length);
 const commentLength = computed(() => commentText.value.length);
@@ -678,7 +678,7 @@ const openInpostModal = () => {
 
     let packageDimensions = null; // Габариты для Inpost
     let packageWeight = null; // Вес для Inpost
-    
+
     order.value.items.forEach((item) => {
         let productName = "";
         let productId = "";
@@ -753,7 +753,7 @@ const openInpostModal = () => {
         };
     }
 
-    
+
     // Формируем строки для reference и comments с ограничением
     referenceText.value = (order.value.id + "|" + referenceParts.join(";")).substring(0, referenceLimit);
     commentText.value = (commentParts.join(";")).substring(0, commentLimit);
@@ -931,19 +931,14 @@ const copyToClipboard = async (caption) => {
         console.error("Failed to copy to clipboard:", error);
     }
 };
+loadingInpost.value = false;
 </script>
 
 <template>
-    <div v-if="loadingInpost" class="overlay">
-        <div class="overlay-content">
-            <div class="spinner"></div>
-            <p>Чекаємо створення ТТН...</p>
-        </div>
-    </div>
-
+ 
     <Head title="Просмотр заказа" />
     <Layout>
-  
+
         <!-- 🔥 Выводим ошибки ЧИТАБЕЛЬНО 🔥 -->
         <div v-if="errorMessages.length" class="mt-4 mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
             <h4 class="font-bold">Помилки:</h4>
@@ -956,7 +951,7 @@ const copyToClipboard = async (caption) => {
         <div class="flex justify-between items-center gap-3">
             <div class="w-2/4 flex flex-wrap items-center gap-3 rounded-xl bg-teal-50/50 p-2 border border-gray-300">
                 <Button type="button" size="small" variant="outlined" @click="copyToClipboard(order.id)">ID: {{ order.id
-                    }}
+                }}
                 </Button>
                 <div v-if="order.inpost_id">
                     <Button type="button" size="small" variant="outlined"
@@ -976,33 +971,13 @@ const copyToClipboard = async (caption) => {
                 </div>
             </div>
             <div class="w-2/4 flex gap-3 items-center">
-                <InputGroup>
-                    <InputGroupAddon :style="{
-                        backgroundColor: statuses.find(
-                            (s) => s.id === form.order_status_id
-                        )?.color
-                            ? '#' +
-                            statuses.find(
-                                (s) => s.id === form.order_status_id
-                            ).color
-                            : '#000',
-                    }"></InputGroupAddon>
-                    <IftaLabel>
-                        <Select v-model="form.order_status_id" optionValue="id" :options="statuses" optionLabel="name"
-                            placeholder="Статус Замовлення" class="w-full" />
-                        <label for="product_quantity">Статус Замовлення</label>
-                    </IftaLabel>
-                </InputGroup>
+
                 <div class="w-full">
-                    <IftaLabel v-if="order.inpost_id || order.tracking_number">
-                        <InputText id="inpost_status" v-model="order.inpost_status" placeholder="Інформація відсутня..."
-                            disabled class="w-full" />
+                    <FloatLabel variant="in" v-if="order.inpost_status">
+                        <InputText id="inpost_status" v-model="order.inpost_status" placeholder="Інформація відсутня..." disabled class="w-full" />
                         <label for="inpost_status">Статус Inpost</label>
-                    </IftaLabel>
-                    <Button v-if="!order.inpost_id && !order.tracking_number" class="w-full" size="large"
-                        @click="openInpostModal">
-                        <Truck class="w-6 h-6" /> Створити ТТН в Inpost
-                    </Button>
+                    </FloatLabel>
+
                 </div>
             </div>
         </div>
@@ -1027,19 +1002,22 @@ const copyToClipboard = async (caption) => {
                     <Fieldset legend="Дані клієнта" :toggleable="true" :collapsed="false">
                         <div class="mb-4 flex gap-3 items-end">
                             <div class="w-full">
-                                <label for="fullname">Им`я</label>
+                                <label for="fullname">Ім'я</label>
                                 <InputText id="fullname" v-model="form.delivery_fullname" class="w-full" />
                             </div>
                             <div class="w-full" v-if="duplicateOrders[0]">
-                                
-                                 <Button label="🔥 Увага! Є дублікати! 🔥" @click="dialogVisible = true" class="w-full" />
+
+                                <Button label="🔥 Увага! Є дублікати! 🔥" @click="dialogVisible = true"
+                                    class="w-full" />
                             </div>
                         </div>
                         <div class="mb-4 grid grid-cols-2 gap-3">
                             <div>
                                 <label for="phone">Телефон</label>
-                                <InputText id="phone" v-model="form.phone" class="w-full"  :invalid="form.phone.length !== 6" />
-                                <Message v-if="form.phone.length !== 6" size="small" severity="error" variant="simple">В номері більше або меньше 6 символів</Message>
+                                <InputText id="phone" v-model="form.phone" class="w-full"
+                                    :invalid="form.phone.length !== 9" />
+                                <Message v-if="form.phone.length !== 9" size="small" severity="error" variant="simple">В
+                                    номері більше або менше 9 символів</Message>
 
                             </div>
                             <div class="flex">
@@ -1049,9 +1027,6 @@ const copyToClipboard = async (caption) => {
                                 </div>
                                 <Button size="small" @click="changeEmail" v-if="!form.email" class="mt-6 ml-2">
                                     <RefreshCcw class="w-6 h-6" />
-                                </Button>
-                                <Button size="small" @click="emailDialogVisible = true" class="mt-6 ml-2">
-                                    <MailPlus class="w-6 h-6" />
                                 </Button>
                             </div>
                         </div>
@@ -1138,7 +1113,7 @@ const copyToClipboard = async (caption) => {
                     </Fieldset>
                 </div>
 
-                
+
             </div>
 
             <div>
@@ -1155,7 +1130,7 @@ const copyToClipboard = async (caption) => {
                             </IftaLabel>
 
                             <IftaLabel class="w-full">
-                                <DatePicker id="payment_date" dateFormat="yy-mm-dd"  v-model="form.payment_date" showTime
+                                <DatePicker id="payment_date" dateFormat="yy-mm-dd" v-model="form.payment_date" showTime
                                     hourFormat="24" fluid />
                                 <label for="payment_date">Дата онлайн оплати</label>
                             </IftaLabel>
@@ -1237,7 +1212,7 @@ const copyToClipboard = async (caption) => {
                                     <td class="border border-gray-300 p-2">
                                         <span v-if="item.product_id">{{
                                             item.product.name
-                                        }}</span>
+                                            }}</span>
                                         <span v-else-if="
                                             item.product_variation_id
                                         ">
@@ -1340,9 +1315,44 @@ const copyToClipboard = async (caption) => {
                         </table>
                     </Fieldset>
                 </div>
-                <Button size="large" @click="updateOrder" class="mt-4 w-full">
-                    <FolderSync class="w-6 h-6" /> Зберегти замовлення
-                </Button>
+                <div class="flex gap-3 items-center mt-4">
+                    <div class="w-1/12" v-if="!order.inpost_id && !order.tracking_number">
+                        <Button  class="w-full" size="large"
+                            @click="openInpostModal">
+                            <Truck class="w-6 h-6" />
+                        </Button>
+                    </div>
+                    <div class="w-1/12">
+                        <Button size="large" @click="emailDialogVisible = true" class="w-full">
+                            <MailPlus class="w-6 h-6" />
+                        </Button>
+                    </div>
+                    <div class="w-8/12">
+                        <InputGroup>
+                            <InputGroupAddon :style="{
+                                backgroundColor: statuses.find(
+                                    (s) => s.id === form.order_status_id
+                                )?.color
+                                    ? '#' +
+                                    statuses.find(
+                                        (s) => s.id === form.order_status_id
+                                    ).color
+                                    : '#000',
+                            }"></InputGroupAddon>
+                            <IftaLabel>
+                                <Select v-model="form.order_status_id" optionValue="id" :options="statuses"
+                                    optionLabel="name" placeholder="Статус Замовлення" class="w-full" />
+                                <label for="product_quantity">Статус Замовлення</label>
+                            </IftaLabel>
+                        </InputGroup>
+                    </div>
+                    <div class="w-full">
+                        <Button size="large" @click="!loadingInpost ? updateOrder() : null" class="w-full" :disabled="loadingInpost">
+                            <FolderSync class="w-6 h-6" /> Зберегти 
+                        </Button>
+                    </div>
+
+                </div>
             </div>
         </div>
 
@@ -1394,10 +1404,11 @@ const copyToClipboard = async (caption) => {
                 <Fieldset legend="Історія замовлення" :toggleable="true" :collapsed="false">
                     <Timeline :value="order.fullfull_history">
                         <template #opposite="slotProps">
-                            <small class="text-surface-500 dark:text-surface-400">{{ formatDateTime(slotProps.item.created_at) }}</small>
+                            <small class="text-surface-500 dark:text-surface-400">{{
+                                formatDateTime(slotProps.item.created_at) }}</small>
                         </template>
                         <template #content="slotProps">
-                            {{slotProps.item.comment}}
+                            {{ slotProps.item.comment }}
                         </template>
                     </Timeline>
                 </Fieldset>
@@ -1405,7 +1416,7 @@ const copyToClipboard = async (caption) => {
         </div>
 
 
-        
+
 
         <Dialog v-model:visible="dialogVisible" header="Дублікати замовлення" :style="{ width: '75vw' }" maximizable
             modal :contentStyle="{ height: '100vh' }">
@@ -1415,19 +1426,19 @@ const copyToClipboard = async (caption) => {
                         <tr class="bg-gray-100">
                             <th class="border border-gray-300 p-2">Статус</th>
                             <th class="border border-gray-300 p-2">
-                                ID замовлення
+                                ID
                             </th>
+                            <th class="border border-gray-300 p-2">Дата замовлення</th>
                             <th class="border border-gray-300 p-2">Контакт</th>
                             <th class="border border-gray-300 p-2">Телефон</th>
                             <th class="border border-gray-300 p-2">Email</th>
                             <th class="border border-gray-300 p-2">IP</th>
                             <th class="border border-gray-300 p-2">Товари</th>
                             <th class="border border-gray-300 p-2">Коментар</th>
-                            <th class="border border-gray-300 p-2">ЗІП-код</th>
+                            <th class="border border-gray-300 p-2">ЗІП</th>
                             <th class="border border-gray-300 p-2">
                                 Метод оплати
                             </th>
-                            <th class="border border-gray-300 p-2">Дата замовлення</th>
                             <th class="border border-gray-300 p-2">Дія</th>
                         </tr>
                     </thead>
@@ -1445,6 +1456,9 @@ const copyToClipboard = async (caption) => {
                             </td>
                             <td class="border border-gray-300 p-2">
                                 #{{ duplicate.id }}
+                            </td>
+                            <td class="border border-gray-300 p-2">
+                                {{ formatDateTime(duplicate.created_at) }}
                             </td>
                             <td class="border border-gray-300 p-2">
                                 {{ duplicate.delivery_fullname }}
@@ -1472,7 +1486,7 @@ const copyToClipboard = async (caption) => {
                                     <div class="text-xs">
                                         <span v-if="item.product_id">{{
                                             item.product.name
-                                        }}</span>
+                                            }}</span>
                                         <span v-else-if="
                                             item.product_variation_id
                                         ">
@@ -1506,9 +1520,7 @@ const copyToClipboard = async (caption) => {
                             <td class="border border-gray-300 p-2">
                                 {{ duplicate.payment_method?.name }}
                             </td>
-                            <td class="border border-gray-300 p-2">
-                                {{ formatDateTime(duplicate.created_at) }}
-                            </td>
+
                             <td class="border border-gray-300 p-2 text-center">
                                 <Button size="small" @click="openOrderDialog(duplicate)">
                                     <Pencil class="w-5 h-5" /> Детально
@@ -1610,7 +1622,7 @@ const copyToClipboard = async (caption) => {
                             <td class="border border-gray-300 p-2">
                                 <span v-if="item.product_id">{{
                                     item.product.name
-                                }}</span>
+                                    }}</span>
                                 <span v-else-if="item.product_variation_id">
                                     {{
                                         item.product_variation.product.name
@@ -1729,7 +1741,7 @@ const copyToClipboard = async (caption) => {
                             <li v-for="macro in macros" :key="macro.key" @click="insertMacro(macro.key)"
                                 class="bg-gray-100 p-1 rounded shadow cursor-pointer hover:bg-gray-200">
                                 <span class="text-xs text-gray-500" v-tooltip.top="macro.description">{{ macro.key
-                                }}</span>
+                                    }}</span>
                             </li>
                         </ul>
                     </div>
@@ -1902,22 +1914,21 @@ const copyToClipboard = async (caption) => {
                     <div class="mt-2">
                         <Fieldset legend="Додаткові поля" :toggleable="true" :collapsed="false">
                             <div class="mb-4 w-full">
-                                <label :class="{'text-red-500': referenceLength >= 100}">Референс ({{ referenceLength }}/100)</label>
-                                <InputText v-model="referenceText" maxlength="100"  class="w-full" />
+                                <label :class="{ 'text-red-500': referenceLength >= 100 }">Референс ({{ referenceLength
+                                    }}/100)</label>
+                                <InputText v-model="referenceText" maxlength="100" class="w-full" />
                             </div>
                             <div class="mb-4 w-full flex gap-3">
-                                <Button 
-                                    v-if="!commentText.includes('|')" 
-                                    size="small" 
-                                    @click="commentText = order.comment + '|' + commentText" 
-                                    class="mt-6">
+                                <Button v-if="!commentText.includes('|')" size="small"
+                                    @click="commentText = order.comment + '|' + commentText" class="mt-6">
                                     <MessageCirclePlus class="w-6 h-6" />
                                 </Button>
                                 <div class="w-full">
-                                    <label :class="{'text-red-500': commentLength >= 100}">Коментар ({{ commentLength }}/100)</label>
-                                    <InputText  v-model="commentText" maxlength="100"  class="w-full " />
+                                    <label :class="{ 'text-red-500': commentLength >= 100 }">Коментар ({{ commentLength
+                                        }}/100)</label>
+                                    <InputText v-model="commentText" maxlength="100" class="w-full " />
                                 </div>
-                                
+
                             </div>
                         </Fieldset>
                     </div>
