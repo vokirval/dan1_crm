@@ -34,7 +34,7 @@ class OrdersController extends Controller
         $user = auth()->user();
 
         // Разрешенные поля для сортировки
-        $allowedSortFields = ['id', 'created_at', 'updated_at', 'sent_at', 'delivery_date', 'delivery_fullname', 'phone', 'email', 'delivery_city', 'order_status_id', 'is_paid', 'comment','responsible_user_id', 'delivery_address', 'delivery_postcode', 'delivery_method_id', 'payment_method_id', 'group_id', 'tracking_number', 'ip', 'website_referrer', 'utm_source', 'utm_medium', 'utm_campaign','utm_content', 'utm_term'];
+        $allowedSortFields = ['id', 'created_at', 'updated_at', 'sent_at', 'delivery_date', 'delivery_fullname', 'phone', 'email', 'delivery_city', 'order_status_id', 'is_paid', 'comment','responsible_user_id', 'delivery_address', 'delivery_postcode', 'delivery_method_id', 'payment_method_id', 'group_id', 'tracking_number', 'ip', 'website_referrer', 'utm_source', 'utm_medium', 'utm_campaign','utm_content', 'utm_term', 'product_id'];
 
         // Проверка сортировки
         if (!in_array($sortBy, $allowedSortFields)) {
@@ -113,9 +113,29 @@ class OrdersController extends Controller
                 $query->where('product_variation_id', $request->input('variation_id'));
             });
         }
-        
 
-        
+        // Добавляем сортировку по первому продукту
+        if ($sortBy === 'product_id') {
+            $ordersQuery->select('orders.*')
+                ->leftJoin('order_items as oi', function ($join) {
+                    $join->on('orders.id', '=', 'oi.order_id')
+                         ->where('oi.id', '=', \DB::raw("(SELECT MIN(id) FROM order_items WHERE order_items.order_id = orders.id)"));
+                })
+                // Джоин с products для случаев, когда product_id не NULL
+                ->leftJoin('products as p', 'oi.product_id', '=', 'p.id')
+                // Джоин с product_variations для случаев, когда product_id NULL
+                ->leftJoin('product_variations as pv', 'oi.product_variation_id', '=', 'pv.id')
+                // Джоин с products через product_variations для получения имени продукта
+                ->leftJoin('products as p2', 'pv.product_id', '=', 'p2.id')
+                // Джоин с product_variation_attributes для получения атрибута "Color"
+                //->leftJoin('product_variation_attributes as pva', function ($join) {
+                    //$join->on('pv.id', '=', 'pva.product_variation_id')->where('pva.attribute_name', '=', 'Color');
+                //})
+                // Сортировка по имени продукта (берем из p.name или p2.name)
+                ->orderByRaw("COALESCE(p.name, p2.name) $sortDirection");
+        } else {
+            $ordersQuery->orderBy($sortBy, $sortDirection);
+        }
 
         // Применяем сортировку и пагинацию
         $orders = $ordersQuery
@@ -129,7 +149,6 @@ class OrdersController extends Controller
                 'items.productVariation:id,product_id',
                 'items.productVariation.product:name,id',
                 'items.productVariation.attributes:product_variation_id,attribute_name,attribute_value'])
-            ->orderBy($sortBy, $sortDirection)
             ->paginate($perPage)
             ->appends($request->only(['per_page', 'sort_by', 'sort_direction']));
 

@@ -757,7 +757,7 @@ const copyOrderDetails = async () => {
         </template>
       </Column>
 
-      <Column :showFilterMenu="false" header="Товари" bodyStyle="max-width:300px">
+      <Column :showFilterMenu="false" header="Товари" bodyStyle="max-width:300px" sortField="product_id" :sortable="true">
         <template #body="{ data }">
           <div v-if="data.items.length > 0"
             v-tooltip.top="{ value: getTooltipText(data.items), showDelay: 500, hideDelay: 300, escape: false, class: 'text-sm custom-tooltip ', }">

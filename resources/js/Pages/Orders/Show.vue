@@ -931,7 +931,7 @@ const copyToClipboard = async (caption) => {
         console.error("Failed to copy to clipboard:", error);
     }
 };
-loadingInpost.value = false;
+
 </script>
 
 <template>
