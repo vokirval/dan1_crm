@@ -96,8 +96,8 @@ const aggregatedProducts = computed(() => {
   // Добавляем проценты к каждому элементу
   return aggregatedData.map(item => ({
     ...item,
-    quantity_percent: totalQuantity > 0 ? (item.quantity / totalQuantity * 100).toFixed() : 0,
-    sum_percent: totalSum > 0 ? (item.total_sum / totalSum * 100).toFixed() : 0,
+    quantity_percent: totalQuantity > 0 ? (item.quantity / totalQuantity * 100).toFixed(2) : 0,
+    sum_percent: totalSum > 0 ? (item.total_sum / totalSum * 100).toFixed(2) : 0,
   }));
 });
 
@@ -612,7 +612,7 @@ const getTooltipText = (items) => {
                 <span>{{ data.quantity_percent }}%</span>
               </template>
             </Column>
-            <Column field="sum_percent" header="Сума товару в замовленнях / Загальну суму замовлень * 100">
+            <Column field="sum_percent" header="Сума товару / Загальну суму замовлень * 100">
               <template #body="{ data }">
                 <span>{{ data.sum_percent }}%</span>
               </template>
