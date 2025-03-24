@@ -56,7 +56,9 @@ const menuItems = ref([
     {
         label: "Статистика",
         icon: "ChartPie",
-        route: "/statistics",
+        children: [
+            { label: "Вся статистика", route: "/statistics" },
+        ],
     },
     {
         label: "Налаштування",

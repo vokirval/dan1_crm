@@ -15,7 +15,6 @@ use App\Http\Controllers\OrderLockController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\EmailTemplateController;
-use App\Http\Controllers\PaymentMethodController;
 
 //php artisan migrate
 //php artisan db:seed --class=DatabaseSeeder
@@ -31,8 +30,11 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/signup', [AuthController::class, 'signup'])->name('signup');
 Route::post('/signup', [AuthController::class, 'storeSignup'])->name('store-signup');
 
+use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\DeliveryMethodController;
 use App\Http\Controllers\ProductsCategoryController;
+
+use App\Http\Controllers\StatisticController;
 
 
 Route::get('/generate-token', function () {
@@ -49,7 +51,7 @@ Route::get('/generate-token', function () {
     // Вернуть токен
     return "Generated token: $token";
 });
-
+ 
 
 
 Route::middleware(['auth'])->group(function() {
@@ -61,7 +63,8 @@ Route::middleware(['auth'])->group(function() {
 
     
     Route::get('/dashboard', [DashboardController::class, 'index']);
-    
+    Route::get('/statistics', [StatisticController::class, 'index']);
+
     Route::prefix('/products')->group(function(){
 
         //products
