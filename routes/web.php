@@ -64,6 +64,7 @@ Route::middleware(['auth'])->group(function() {
     
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/statistics', [StatisticController::class, 'index']);
+    Route::post('/statistics/filter', [StatisticController::class, 'filter']);
 
     Route::prefix('/products')->group(function(){
 

@@ -11,11 +11,37 @@ use Illuminate\Support\Facades\DB;
 
 class StatisticController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $filterJson = $request->get('filters');
-        $filters = $filterJson ? json_decode($filterJson, true) : null;
+        return Inertia::render('Statistics/Index', [
+            'statuses' => OrderStatus::all(),
+            'categories' => Category::all(),
+            'initialData' => [
+                'orders' => [],
+                'stats' => [
+                    'order_count' => 0,
+                    'status_stats' => [],
+                    'items_count_non_services' => 0,
+                    'items_count_services' => 0,
+                    'total_sum_non_services' => 0,
+                    'total_sum_services' => 0
+                ],
+                'products_stats' => []
+            ]
+        ]);
+    }
 
+    // Обработка фильтров (POST)
+    public function filter(Request $request)
+    {
+        $request->validate([
+            'mandatory_date' => 'required|array',
+            'mandatory_date.field' => 'required|in:created_at,delivery_date,sent_at,updated_at',
+            'mandatory_date.range' => 'required|array|size:2',
+            'filters' => 'nullable|array'
+        ]);
+
+        // Применяем обязательный фильтр даты
         $query = Order::query()
             ->with([
                 'status',
@@ -23,108 +49,138 @@ class StatisticController extends Controller
                 'deliveryMethod',
                 'group',
                 'responsibleUser',
-                'items.product:name,id,category_id',
-                'items.productVariation:id,product_id',
-                'items.productVariation.product:name,id,category_id', // Добавляем category_id для вариаций
-                'items.productVariation.attributes:product_variation_id,attribute_name,attribute_value'
+                'items' => function ($query) {
+                    $query->select([
+                        'id',
+                        'order_id',
+                        'product_id',
+                        'product_variation_id',
+                        'quantity',
+                        'price'
+                    ])->with([
+                                'product:id,name,category_id',
+                                'productVariation:id,product_id',
+                                'productVariation.product:id,name,category_id',
+                                'productVariation.attributes:product_variation_id,attribute_name,attribute_value'
+                            ]);
+                }
             ])
             ->withSum('items as calculated_total', DB::raw('quantity * price'))
-            ->when($filters, function ($query) use ($filters) {
-                $this->applyFilters($query, $filters);
-            })
-            ->latest();
+            ->whereBetween(
+                $request->input('mandatory_date.field'),
+                $request->input('mandatory_date.range')
+            );
 
-        $orders = $query->get();
-        $servicesCategoryId = Category::where('name', 'Services')->value('id') ?? 10; // Динамический ID для "Services"
+        // Применяем дополнительные фильтры (если есть)
+        if ($request->filled('filters')) {
+            $this->applyFilters($query, $request->input('filters'));
+        }
 
-        // 1. Количество заказов
-        $orderCount = $orders->count();
+        $orders = $query->latest()->get();
+        $categories = Category::all()->keyBy('id');
+        $servicesCategoryId = Category::where('name', 'Services')->first()->id ?? 10;
 
-        // 2. Количество товаров (не Services и Services)
-        $itemsCountNonServices = $orders->sum(function ($order) use ($servicesCategoryId) {
-            return $order->items->where(function ($item) use ($servicesCategoryId) {
-                $categoryId = $item->product ? $item->product->category_id : ($item->productVariation->product->category_id ?? null);
-                return $categoryId !== $servicesCategoryId;
-            })->sum('quantity');
-        });
 
-        $itemsCountServices = $orders->sum(function ($order) use ($servicesCategoryId) {
-            return $order->items->where(function ($item) use ($servicesCategoryId) {
-                $categoryId = $item->product ? $item->product->category_id : ($item->productVariation->product->category_id ?? null);
-                return $categoryId === $servicesCategoryId;
-            })->sum('quantity');
-        });
-
-        // 3. Сумма заказов (не Services и Services)
-        $totalSumNonServices = $orders->sum(function ($order) use ($servicesCategoryId) {
-            return $order->items->where(function ($item) use ($servicesCategoryId) {
-                $categoryId = $item->product ? $item->product->category_id : ($item->productVariation->product->category_id ?? null);
-                return $categoryId !== $servicesCategoryId;
-            })->sum(function ($item) {
-                return $item->quantity * $item->price;
-            });
-        });
-
-        $totalSumServices = $orders->sum(function ($order) use ($servicesCategoryId) {
-            return $order->items->where(function ($item) use ($servicesCategoryId) {
-                $categoryId = $item->product ? $item->product->category_id : ($item->productVariation->product->category_id ?? null);
-                return $categoryId === $servicesCategoryId;
-            })->sum(function ($item) {
-                return $item->quantity * $item->price;
-            });
-        });
-
-        // 4. Массив товаров с агрегацией
-        $productsStats = $this->getProductsStats($orders);
-
-        $statuses = OrderStatus::all();
-        $categories = Category::all();
-
-        return Inertia::render('Statistics/Index', [
+        return response()->json([
             'orders' => $orders,
-            'statuses' => $statuses,
-            'categories' => $categories,
             'stats' => [
-                'order_count' => $orderCount,
-                'items_count_non_services' => $itemsCountNonServices,
-                'items_count_services' => $itemsCountServices,
-                'total_sum_non_services' => $totalSumNonServices,
-                'total_sum_services' => $totalSumServices,
+                'order_count' => $orders->count(),
+                'status_stats' => $this->getStatusStats($orders),
+                'items_count_non_services' => $this->getItemsCount($orders, $servicesCategoryId, false, $categories),
+                'items_count_services' => $this->getItemsCount($orders, $servicesCategoryId, true, $categories),
+                'total_sum_non_services' => $this->getItemsSum($orders, $servicesCategoryId, false, $categories),
+                'total_sum_services' => $this->getItemsSum($orders, $servicesCategoryId, true, $categories),
             ],
-            'products_stats' => $productsStats,
+            'products_stats' => $this->getProductsStats($orders, $categories),
         ]);
     }
 
-    protected function getProductsStats($orders)
+    protected function getStatusStats($orders)
     {
-        $productsMap = [];
+        return OrderStatus::all()->mapWithKeys(function ($status) use ($orders) {
+            return [
+                $status->id => [
+                    'count' => $orders->where('order_status_id', $status->id)->count(),
+                    'name' => $status->name,
+                    'color' => $status->color // сохраняем цвет для фронтенда
+                ]
+            ];
+        })->sortByDesc('count')->values()->toArray();
+    }
 
-        foreach ($orders as $order) {
-            foreach ($order->items as $item) {
-                $product = $item->product ?? $item->productVariation->product ?? null;
-                if (!$product) continue;
 
-                $key = $item->product_id . '-' . ($item->product_variation_id ?? 'no-variation');
-                $attributes = $item->product_variation_id && $item->productVariation->attributes
-                    ? $item->productVariation->attributes->map(fn($attr) => "{$attr->attribute_name}: {$attr->attribute_value}")->join(', ')
-                    : null;
+    protected function getItemsCount($orders, $servicesCategoryId, bool $isService, $categories): int
+    {
+        return $orders->sum(function ($order) use ($servicesCategoryId, $isService, $categories) {
+            return $order->items->sum(function ($item) use ($servicesCategoryId, $isService, $categories) {
+                $categoryId = $this->getItemCategoryId($item, $categories);
+                return ($categoryId === $servicesCategoryId) === $isService ? $item->quantity : 0;
+            });
+        });
+    }
 
-                if (!isset($productsMap[$key])) {
-                    $productsMap[$key] = [
-                        'product_name' => $product->name,
-                        'attributes' => $attributes,
-                        'category_name' => $product->category->name ?? 'Без категорії',
-                        'quantity' => 0,
-                        'total_sum' => 0,
-                    ];
-                }
+    protected function getItemsSum($orders, $servicesCategoryId, bool $isService, $categories): float
+    {
+        return $orders->sum(function ($order) use ($servicesCategoryId, $isService, $categories) {
+            return $order->items->sum(function ($item) use ($servicesCategoryId, $isService, $categories) {
+                $categoryId = $this->getItemCategoryId($item, $categories);
+                return ($categoryId === $servicesCategoryId) === $isService ? $item->quantity * $item->price : 0;
+            });
+        });
+    }
 
-                $productsMap[$key]['quantity'] += $item->quantity;
-                $productsMap[$key]['total_sum'] += $item->quantity * $item->price;
-            }
+    protected function getItemCategoryId($item, $categories)
+    {
+        if ($item->product) {
+            return $item->product->category_id;
         }
 
-        return array_values($productsMap); // Преобразуем в массив без ключей
+        if ($item->product_variation_id && $item->productVariation->product) {
+            return $item->productVariation->product->category_id;
+        }
+
+        return null;
+    }
+
+    protected function getProductsStats($orders, $categories)
+    {
+        return $orders->flatMap(function ($order) use ($categories) {
+            return $order->items->map(function ($item) use ($categories) {
+                $product = $item->product ?? $item->productVariation->product ?? null;
+                if (!$product)
+                    return null;
+
+                $categoryId = $this->getItemCategoryId($item, $categories);
+                $categoryName = $categories[$categoryId]->name ?? 'Без категорії';
+
+                return [
+                    'key' => $item->product_id . '-' . ($item->product_variation_id ?? 'no-variation'),
+                    'product_name' => $product->name,
+                    'attributes' => $item->product_variation_id
+                        ? $item->productVariation->attributes
+                            ->map(fn($attr) => "{$attr->attribute_name}: {$attr->attribute_value}")
+                            ->join(', ')
+                        : null,
+                    'category_name' => $categoryName,
+                    'quantity' => $item->quantity,
+                    'total_sum' => $item->quantity * $item->price,
+                ];
+            });
+        })
+            ->filter()
+            ->groupBy('key')
+            ->map(function ($group) {
+                $first = $group->first();
+                return [
+                    'product_name' => $first['product_name'],
+                    'attributes' => $first['attributes'],
+                    'category_name' => $first['category_name'],
+                    'quantity' => $group->sum('quantity'),
+                    'total_sum' => $group->sum('total_sum'),
+                ];
+            })
+            ->values()
+            ->toArray();
     }
 
     protected function isDateField($field): bool
@@ -134,7 +190,6 @@ class StatisticController extends Controller
 
     protected function applyFilters($query, $group, $parentCondition = 'AND')
     {
-        // Ваш текущий код applyFilters остается без изменений
         $method = strtolower($parentCondition) === 'or' ? 'orWhere' : 'where';
 
         $query->$method(function ($q) use ($group) {
@@ -147,137 +202,161 @@ class StatisticController extends Controller
                     continue;
                 }
 
-                $field = $rule['field'] ?? null;
-                $operator = $rule['operator'] ?? null;
-                $value = $rule['value'] ?? null;
-
-                if (!$field || !$operator || is_null($value)) {
-                    continue;
-                }
-
-                if ($field === 'product_id') {
-                    $q->$groupMethod(function ($sq) use ($operator, $value) {
-                        if ($operator === 'дорівнює') {
-                            $sq->whereHas('items', function ($itemQuery) use ($value) {
-                                $itemQuery->where(function ($inner) use ($value) {
-                                    $inner->where('product_id', $value)
-                                          ->orWhereHas('productVariation', fn($q) => $q->where('product_id', $value));
-                                });
-                            });
-                        } elseif ($operator === 'не дорівнює') {
-                            $sq->whereDoesntHave('items', function ($itemQuery) use ($value) {
-                                $itemQuery->where(function ($inner) use ($value) {
-                                    $inner->where('product_id', $value)
-                                          ->orWhereHas('productVariation', fn($q) => $q->where('product_id', $value));
-                                });
-                            })->orWhereHas('items', function ($itemQuery) use ($value) {
-                                $itemQuery->where('product_id', '!=', $value)
-                                          ->whereDoesntHave('productVariation', fn($q) => $q->where('product_id', $value));
-                            });
-                        }
-                    });
-                    continue;
-                }
-
-                if ($field === 'product_variation_id') {
-                    $q->$groupMethod(function ($sq) use ($operator, $value) {
-                        if ($operator === 'дорівнює') {
-                            $sq->whereHas('items', fn($q) => $q->where('product_variation_id', $value));
-                        } elseif ($operator === 'не дорівнює') {
-                            $sq->whereDoesntHave('items', fn($q) => $q->where('product_variation_id', $value));
-                        }
-                    });
-                    continue;
-                }
-
-                if ($field === 'category_id') {
-                    $q->$groupMethod(function ($sq) use ($operator, $value) {
-                        if ($operator === 'дорівнює') {
-                            $sq->whereHas('items', function ($itemQuery) use ($value) {
-                                $itemQuery->whereHas('product', function ($productQuery) use ($value) {
-                                    $productQuery->where('category_id', $value);
-                                })->orWhereHas('productVariation.product', function ($variationProductQuery) use ($value) {
-                                    $variationProductQuery->where('category_id', $value);
-                                });
-                            });
-                        } elseif ($operator === 'не дорівнює') {
-                            $sq->whereDoesntHave('items', function ($itemQuery) use ($value) {
-                                $itemQuery->whereHas('product', function ($productQuery) use ($value) {
-                                    $productQuery->where('category_id', $value);
-                                })->orWhereHas('productVariation.product', function ($variationProductQuery) use ($value) {
-                                    $variationProductQuery->where('category_id', $value);
-                                });
-                            })->orWhereHas('items', function ($itemQuery) use ($value) {
-                                $itemQuery->whereHas('product', fn($q) => $q->where('category_id', '!=', $value))
-                                          ->whereDoesntHave('productVariation.product', fn($q) => $q->where('category_id', $value));
-                            });
-                        }
-                    });
-                    continue;
-                }
-
-                if ($field === 'calculated_total') {
-                    $allowedOperators = ['=', '!=', '<', '<=', '>', '>='];
-                    if (in_array($operator, $allowedOperators)) {
-                        $raw = "(SELECT COALESCE(SUM(order_items.quantity * order_items.price), 0) FROM order_items WHERE order_items.order_id = orders.id)";
-                        $q->$groupMethod(function ($subQ) use ($operator, $value, $raw) {
-                            $subQ->whereRaw("$raw $operator ?", [$value]);
-                        });
-                    }
-                    continue;
-                }
-
-                $q->$groupMethod(function ($subQ) use ($field, $operator, $value) {
-                    switch ($operator) {
-                        case 'містить':
-                            $subQ->where($field, 'LIKE', "%$value%");
-                            break;
-                        case 'не містить':
-                            $subQ->where($field, 'NOT LIKE', "%$value%");
-                            break;
-                        case 'дорівнює':
-                            if ($this->isDateField($field)) {
-                                $subQ->whereDate($field, '=', $value);
-                            } else {
-                                $subQ->where($field, '=', $value);
-                            }
-                            break;
-                        case 'не дорівнює':
-                            $subQ->where($field, '!=', $value);
-                            break;
-                        case '=':
-                        case '!=':
-                        case '<':
-                        case '<=':
-                        case '>':
-                        case '>=':
-                            $subQ->where($field, $operator, $value);
-                            break;
-                        case 'до':
-                            $subQ->whereDate($field, '<', $value);
-                            break;
-                        case 'після':
-                            $subQ->whereDate($field, '>', $value);
-                            break;
-                        case 'між':
-                            if (is_array($value) && count($value) === 2) {
-                                $subQ->whereDate($field, '>=', $value[0])
-                                     ->whereDate($field, '<=', $value[1]);
-                            }
-                            break;
-                        case 'входить в':
-                            if (is_array($value)) {
-                                $subQ->whereIn($field, $value);
-                            }
-                            break;
-                        case 'не входить в':
-                            if (is_array($value)) {
-                                $subQ->whereNotIn($field, $value);
-                            }
-                            break;
-                    }
-                });
+                $this->applyFilterRule($q, $rule, $groupMethod);
             }
         });
+    }
+
+    protected function applyFilterRule($query, array $rule, string $method): void
+    {
+        $field = $rule['field'] ?? null;
+        $operator = $rule['operator'] ?? null;
+        $value = $rule['value'] ?? null;
+
+        if (!$field || !$operator || is_null($value)) {
+            return;
+        }
+
+        // Специальная обработка взаимоисключающих условий для статусов
+        if ($field === 'order_status_id') {
+            $this->applyStatusFilter($query, $operator, $value, $method);
+            return;
+        }
+
+        match ($field) {
+            'product_id' => $this->applyProductFilter($query, $operator, $value, $method),
+            'product_variation_id' => $this->applyVariationFilter($query, $operator, $value, $method),
+            'category_id' => $this->applyCategoryFilter($query, $operator, $value, $method),
+            'calculated_total' => $this->applyTotalFilter($query, $operator, $value, $method),
+            default => $this->applyDefaultFilter($query, $field, $operator, $value, $method)
+        };
+    }
+
+    protected function applyStatusFilter($query, string $operator, $value, string $method): void
+    {
+        if (!is_array($value)) {
+            $value = [$value];
+        }
+
+        if ($operator === 'входить в') {
+            $query->{$method . 'In'}('order_status_id', $value);
+        } elseif ($operator === 'не входить в') {
+            $query->{$method . 'NotIn'}('order_status_id', $value);
+        } else {
+            $query->{$method}('order_status_id', $operator, $value);
+        }
+    }
+
+    protected function applyProductFilter($query, string $operator, $value, string $method): void
+    {
+        $callback = function ($q) use ($operator, $value) {
+            if ($operator === 'дорівнює') {
+                $q->where('product_id', $value)
+                    ->orWhereHas('productVariation', fn($q) => $q->where('product_id', $value));
+            } elseif ($operator === 'не дорівнює') {
+                $q->where('product_id', '!=', $value)
+                    ->whereDoesntHave('productVariation', fn($q) => $q->where('product_id', $value));
+            }
+        };
+
+        $query->{$method . 'Has'}('items', $callback);
+    }
+
+    protected function applyVariationFilter($query, string $operator, $value, string $method): void
+    {
+        $callback = fn($q) => $operator === 'дорівнює'
+            ? $q->where('product_variation_id', $value)
+            : $q->where('product_variation_id', '!=', $value);
+
+        $query->{$method . 'Has'}('items', $callback);
+    }
+
+    protected function applyCategoryFilter($query, string $operator, $value, string $method): void
+    {
+        $callback = function ($q) use ($operator, $value) {
+            $q->whereHas('product', fn($q) => $operator === 'дорівнює'
+                ? $q->where('category_id', $value)
+                : $q->where('category_id', '!=', $value))
+                ->orWhereHas('productVariation.product', fn($q) => $operator === 'дорівнює'
+                    ? $q->where('category_id', $value)
+                    : $q->where('category_id', '!=', $value));
+        };
+
+        $query->{$method . 'Has'}('items', $callback);
+    }
+
+    protected function applyTotalFilter($query, string $operator, $value, string $method): void
+    {
+        if (in_array($operator, ['=', '!=', '<', '<=', '>', '>='])) {
+            $raw = "(SELECT COALESCE(SUM(quantity * price), 0) FROM order_items WHERE order_id = orders.id)";
+            $query->{$method . 'Raw'}("$raw $operator ?", [$value]);
+        }
+    }
+
+    protected function applyDefaultFilter($query, string $field, string $operator, $value, string $method): void
+    {
+        if ($this->isDateField($field) && in_array($operator, ['дорівнює', 'не дорівнює', 'до', 'після', 'між'])) {
+            $this->applyDateFilter($query, $field, $operator, $value, $method);
+            return;
+        }
+
+        switch ($operator) {
+            case 'містить':
+                $query->{$method}($field, 'LIKE', "%$value%");
+                break;
+            case 'не містить':
+                $query->{$method}($field, 'NOT LIKE', "%$value%");
+                break;
+            case 'дорівнює':
+                $query->{$method}($field, '=', $value);
+                break;
+            case 'не дорівнює':
+                $query->{$method}($field, '!=', $value);
+                break;
+            case '=':
+            case '!=':
+            case '<':
+            case '<=':
+            case '>':
+            case '>=':
+                $query->{$method}($field, $operator, $value);
+                break;
+            case 'входить в':
+                if (is_array($value)) {
+                    $query->{$method . 'In'}($field, $value);
+                }
+                break;
+            case 'не входить в':
+                if (is_array($value)) {
+                    $query->{$method . 'NotIn'}($field, $value);
+                }
+                break;
+        }
+    }
+
+    protected function applyDateFilter($query, string $field, string $operator, $value, string $method): void
+    {
+        switch ($operator) {
+            case 'дорівнює':
+                $query->{$method . 'Date'}($field, '=', $value);
+                break;
+            case 'не дорівнює':
+                $query->{$method . 'Date'}($field, '!=', $value);
+                break;
+            case 'до':
+                $query->{$method . 'Date'}($field, '<', $value);
+                break;
+            case 'після':
+                $query->{$method . 'Date'}($field, '>', $value);
+                break;
+            case 'між':
+                if (is_array($value) && count($value) === 2) {
+                    $query->{$method}(function ($q) use ($field, $value) {
+                        $q->whereDate($field, '>=', $value[0])
+                            ->whereDate($field, '<=', $value[1]);
+                    });
+                }
+                break;
+        }
     }
 }

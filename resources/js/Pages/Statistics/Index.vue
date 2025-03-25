@@ -16,6 +16,81 @@ const products = ref([]);
 const variationsMap = ref({});
 const savedFilters = ref([]);
 const newFilterName = ref("");
+const isLoading = ref(false);
+// Исходные значения для сброса
+const DEFAULT_DATE_FILTER = {
+  field: 'created_at',
+  range: [null, null]
+};
+
+const DEFAULT_FILTER = {
+  condition: "AND",
+  rules: []
+};
+
+
+// Обязательный фильтр по дате
+const mandatoryDateFilter = reactive({ ...DEFAULT_DATE_FILTER });
+
+const filter = reactive({ ...DEFAULT_FILTER });
+
+// Полный сброс всех фильтров
+const resetAllFilters = () => {
+  // 1. Сбрасываем даты
+  mandatoryDateFilter.field = 'created_at'
+  mandatoryDateFilter.range = [null, null]
+
+  // 2. Полностью пересоздаем объект фильтра
+  const newFilter = {
+    condition: "AND",
+    rules: []
+  }
+
+  // 3. Удаляем все существующие свойства
+  for (const key in filter) {
+    delete filter[key]
+  }
+
+  // 4. Добавляем новые свойства
+  Object.assign(filter, newFilter)
+
+  // 5. Принудительный триггер обновления
+  if (filter.rules) {
+    filter.rules = [...filter.rules]
+  }
+}
+
+// Загрузка данных при отправке формы
+const loadStatistics = async () => {
+  if (!mandatoryDateFilter.range[0] || !mandatoryDateFilter.range[1]) {
+    alert('Будь ласка, оберіть дати');
+    return;
+  }
+
+  isLoading.value = true;
+
+  try {
+    const response = await axios.post('/statistics/filter', {
+      mandatory_date: {
+        field: mandatoryDateFilter.field,
+        range: [
+          formatLocalDate(mandatoryDateFilter.range[0]),
+          formatLocalDate(mandatoryDateFilter.range[1])
+        ]
+      },
+      filters: filter.rules.length ? filter : null
+    });
+
+    orders.value = response.data.orders;
+    stats.value = response.data.stats;
+    productsStats.value = response.data.products_stats;
+  } catch (error) {
+    console.error('Ошибка загрузки:', error);
+    alert(error.response?.data?.message || 'Ошибка при загрузке статистики');
+  } finally {
+    isLoading.value = false;
+  }
+};
 
 
 // Новый режим агрегации
@@ -34,7 +109,7 @@ const aggregatedProducts = computed(() => {
   // Вычисляем общее количество и сумму для текущего набора данных
   const totalQuantity = stats.value.order_count || 0;
   const totalSum = (stats.value.total_sum_non_services + stats.value.total_sum_services) || 0;
- 
+
   let aggregatedData = [];
 
   if (aggregationMode.value === 'by_product_with_attributes') {
@@ -103,20 +178,28 @@ const aggregatedProducts = computed(() => {
 
 console.log(aggregatedProducts.value);
 
+// Сохранение фильтра в localStorage (с датой)
 const saveCurrentFilter = () => {
   if (!newFilterName.value.trim()) {
     alert("Введіть назву фільтра!");
     return;
   }
-  const all = JSON.parse(localStorage.getItem("filterTemplates") || "[]");
-  all.push({
+
+  const allFilters = JSON.parse(localStorage.getItem("filterTemplates") || "[]");
+
+  allFilters.push({
     name: newFilterName.value.trim(),
-    data: JSON.parse(JSON.stringify(filter)),
+    data: {
+      mainFilter: JSON.parse(JSON.stringify(filter)),
+      dateFilter: JSON.parse(JSON.stringify(mandatoryDateFilter))
+    }
   });
-  localStorage.setItem("filterTemplates", JSON.stringify(all));
+
+  localStorage.setItem("filterTemplates", JSON.stringify(allFilters));
   newFilterName.value = "";
   loadSavedFilters();
 };
+
 
 const loadSavedFilters = () => {
   try {
@@ -126,9 +209,12 @@ const loadSavedFilters = () => {
   }
 };
 
-const applySavedFilter = (data) => {
-  Object.assign(filter, JSON.parse(JSON.stringify(data)));
-  loadVariationsForFilter(filter);
+const applySavedFilter = (savedData) => {
+  Object.assign(filter, JSON.parse(JSON.stringify(savedData.mainFilter)));
+  Object.assign(mandatoryDateFilter, JSON.parse(JSON.stringify(savedData.dateFilter)));
+
+  // Загружаем вариации для продуктов, если есть такие фильтры
+  loadVariationsForFilter(savedData.mainFilter);
 };
 
 const deleteFilter = (index) => {
@@ -192,6 +278,13 @@ const loadVariationsForFilter = (group) => {
   checkRules(group.rules);
 };
 
+const dateFields = [
+  { label: 'Дата створення', value: 'created_at' },
+  { label: 'Дата оновлення', value: 'updated_at' },
+  { label: 'Дата відправки', value: 'sent_at' },
+  { label: 'Дата доставки', value: 'delivery_date' }
+]
+
 const fields = [
   { label: "Email", value: "email", type: "string" },
   { label: "Телефон", value: "phone", type: "string" },
@@ -214,7 +307,7 @@ const operators = {
   string: ["містить", "не містить", "дорівнює", "не дорівнює"],
   number: ["=", "!=", "<", "<=", ">", ">="],
   boolean: ["дорівнює"],
-  date: ["до", "після", "дорівнює", "між"],
+  date: ["між"],
   select: ["дорівнює", "не дорівнює"],
   multiselect: ["входить в", "не входить в"],
 };
@@ -230,10 +323,6 @@ const getOptions = (field, rule = null) => {
   return options?.value ?? options ?? [];
 };
 
-const filter = reactive({
-  condition: "AND",
-  rules: [],
-});
 
 const addRule = (group = filter.rules) => {
   group.push({ field: null, operator: null, value: null });
@@ -252,10 +341,6 @@ const removeRule = (group, index) => {
   }
 };
 
-const resetFilter = () => {
-  filter.condition = "AND";
-  filter.rules = [];
-};
 
 const formatLocalDate = (date) => {
   if (!date) return null;
@@ -263,48 +348,14 @@ const formatLocalDate = (date) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const applyFilter = () => {
-  const normalized = JSON.parse(JSON.stringify(filter));
-  const normalizeRules = (rules) => {
-    return rules.map((rule) => {
-      if (rule.rules) {
-        rule.rules = normalizeRules(rule.rules);
-        return rule;
-      }
-      const type = getType(rule.field);
-      if (type === "date" && rule.value) {
-        if (rule.operator === "між") {
-          rule.value = Array.isArray(rule.value) && rule.value.length === 2
-            ? rule.value.map(val => formatLocalDate(val))
-            : [null, null];
-        } else {
-          rule.value = formatLocalDate(rule.value);
-        }
-      }
-      return rule;
-    });
-  };
-  normalized.rules = normalizeRules(normalized.rules);
 
-  router.get(
-    "/statistics",
-    { filters: JSON.stringify(normalized) },
-    {
-      preserveState: true,
-      onSuccess: (page) => {
-        orders.value = page.props.orders;
-        Object.assign(stats.value, page.props.stats);
-        productsStats.value = page.props.products_stats;
-      },
-    }
-  );
-};
 
 watch(
   filter,
   () => {
     const handleOperatorChange = (rules) => {
       for (const rule of rules) {
+        if (getType(rule.field) === "date") rule.operator = "між"; //Робимо МІЖ дефолтним
         if (rule.rules) handleOperatorChange(rule.rules);
         else if (rule._prevOperator !== rule.operator) {
           rule.value = rule.field === "product_variation_id" ? null : "";
@@ -358,14 +409,35 @@ const getTooltipText = (items) => {
 </script>
 
 <template>
+
   <Head title="Статистика" />
   <Layout>
     <div class="p-6 space-y-6">
-      <h1 class="text-2xl font-bold">🧠 Конструктор фільтрів</h1>
+
+
+
+
+
 
       <div class="flex gap-4">
         <div class="w-2/3">
+
+          <div
+            class="flex gap-3 items-center align-center mb-3  border-gray-200 border bg-white p-3 rounded-md shadow-sm">
+            <h2 class="text-lg font-bold">Обов'язковий фільтр по даті:</h2>
+            <div class="flex items-center gap-4 flex-wrap">
+              <Select v-model="mandatoryDateFilter.field" :options="dateFields" optionLabel="label" optionValue="value"
+                placeholder="Оберіть поле дати" class="w-auto" />
+
+              <InputText v-model="mandatoryDateFilter.range[0]" type="date" class="border rounded px-2 py-1" />
+
+              <InputText v-model="mandatoryDateFilter.range[1]" type="date" class="border rounded px-2 py-1" />
+
+
+            </div>
+          </div>
           <div class="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
+
             <div class="flex items-center gap-3 mb-4">
               <span class="font-semibold text-sm text-gray-700">Головне поєднання умов:</span>
               <select v-model="filter.condition" class="border rounded px-2 py-1 bg-white">
@@ -376,37 +448,50 @@ const getTooltipText = (items) => {
 
             <div class="space-y-4">
               <template v-for="(rule, index) in filter.rules" :key="index">
+
                 <!-- Одиночное правило на основном уровне -->
-                <div v-if="!rule.rules" class="flex items-center gap-3 bg-white p-3 rounded-md shadow-sm border border-gray-200 border-l-2 border-l-black">
-                  <select v-model="rule.field" class="w-56 border rounded px-2 py-1" placeholder="Поле">
-                    <option v-for="field in fields" :value="field.value" :key="field.value">{{ field.label }}</option>
-                  </select>
-                  <select v-model="rule.operator" class="w-48 border rounded px-2 py-1" placeholder="Оператор">
-                    <option v-for="op in getOperators(getType(rule.field))" :value="op" :key="op">{{ op }}</option>
-                  </select>
-                  <input v-if="getType(rule.field) === 'string'" v-model="rule.value" class="w-60 border rounded px-2 py-1" placeholder="Значення" />
-                  <input v-if="getType(rule.field) === 'number'" v-model="rule.value" type="number" class="w-60 border rounded px-2 py-1" placeholder="Число" />
-                  <select v-if="getType(rule.field) === 'boolean'" v-model="rule.value" class="w-48 border rounded px-2 py-1">
-                    <option :value="true">Так</option>
-                    <option :value="false">Ні</option>
-                  </select>
-                  <select v-if="getType(rule.field) === 'select' && rule.field !== 'product_variation_id'" v-model="rule.value" class="w-60 border rounded px-2 py-1">
-                    <option v-for="option in getOptions(rule.field, rule)" :value="option.id" :key="option.id">{{ option.name }}</option>
-                  </select>
-                  <select v-if="rule.field === 'product_variation_id'" v-model="rule.value" class="w-60 border rounded px-2 py-1" placeholder="Варіація">
-                    <option v-for="option in getOptions(rule.field, rule)" :value="option.id" :key="option.id">{{ option.name }}</option>
-                  </select>
-                
-                  <MultiSelect v-if="getType(rule.field) === 'multiselect'" v-model="rule.value" :options="getOptions(rule.field, rule)" optionLabel="name" optionValue="id" filter 
-                   class="w-60" />
-                  <input v-if="getType(rule.field) === 'date' && rule.operator !== 'між'" v-model="rule.value" type="date" class="w-60 border rounded px-2 py-1" />
+                <div v-if="!rule.rules"
+                  class="flex items-center gap-3 bg-white p-3 rounded-md shadow-sm border border-gray-200 border-l-2 border-l-black">
+
+                  <!--Выбор поля-->
+                  <Select v-model="rule.field" optionValue="value" size="small" :options="fields" optionLabel="label"
+                    filter filterPlaceholder="Пошук..." placeholder="Оберіть поле" class="w-60" />
+
+                  <!--Выбор оператора-->
+
+                  <Select v-model="rule.operator" :options="getOperators(getType(rule.field))"
+                    class="w-48 border rounded" placeholder="Оператор" />
+
+                  <!--Выбор значений-->
+                  <Select v-if="getType(rule.field) === 'boolean'" v-model="rule.value"
+                    :options="[{ label: 'Так', value: true }, { label: 'Ні', value: false }]" optionLabel="label"
+                    optionValue="value" class="w-60 border rounded" placeholder="Оберіть значення" />
+                  <Select v-if="getType(rule.field) === 'select' && rule.field !== 'product_variation_id'"
+                    v-model="rule.value" :options="getOptions(rule.field, rule)" class="w-60 border rounded"
+                    placeholder="Оберіть значення" optionLabel="name" optionValue="id" filter />
+                  <Select v-if="rule.field === 'product_variation_id'" v-model="rule.value"
+                    :options="getOptions(rule.field, rule)" class="w-60 border rounded" placeholder="Оберіть значення"
+                    optionLabel="name" optionValue="id" filter />
+
+                  <MultiSelect v-if="getType(rule.field) === 'multiselect'" v-model="rule.value"
+                    :options="getOptions(rule.field, rule)" optionLabel="name" optionValue="id" filter class="w-60" />
+
+
+                  <InputText v-if="getType(rule.field) === 'string'" v-model="rule.value"
+                    class="w-60 border rounded px-2 py-1" placeholder="Значення" />
+                  <InputText v-if="getType(rule.field) === 'number'" v-model="rule.value" type="number"
+                    class="w-60 border rounded px-2 py-1" placeholder="Число" />
+
+                  <InputText v-if="getType(rule.field) === 'date' && rule.operator !== 'між'" v-model="rule.value"
+                    type="date" class="w-60 border rounded px-2 py-1" />
                   <div v-if="getType(rule.field) === 'date' && rule.operator === 'між'" class="flex gap-2">
-                    <input v-model="rule.value[0]" type="date" class="w-28 border rounded px-2 py-1" />
-                    <input v-model="rule.value[1]" type="date" class="w-28 border rounded px-2 py-1" />
+                    <InputText v-model="rule.value[0]" type="date" class="w-auto border rounded px-2 py-1" />
+                    <InputText v-model="rule.value[1]" type="date" class="w-auto border rounded px-2 py-1" />
                   </div>
                   <button @click="removeRule(filter.rules, index)" class="text-red-500 hover:text-red-700">
                     <Trash class="w-5 h-5" />
                   </button>
+
                 </div>
 
                 <!-- Группа первого уровня -->
@@ -425,40 +510,57 @@ const getTooltipText = (items) => {
                   <div class="space-y-3">
                     <template v-for="(subRule, subIndex) in rule.rules" :key="subIndex">
                       <!-- Одиночное правило внутри группы первого уровня -->
-                      <div v-if="!subRule.rules" class="flex items-center gap-3 bg-white p-3 rounded-md shadow-sm  border border-gray-200 ">
-                        <select v-model="subRule.field" class="w-56 border rounded px-2 py-1" placeholder="Поле">
-                          <option v-for="field in fields" :value="field.value" :key="field.value">{{ field.label }}</option>
-                        </select>
-                        <select v-model="subRule.operator" class="w-48 border rounded px-2 py-1" placeholder="Оператор">
-                          <option v-for="op in getOperators(getType(subRule.field))" :value="op" :key="op">{{ op }}</option>
-                        </select>
-                        <input v-if="getType(subRule.field) === 'string'" v-model="subRule.value" class="w-60 border rounded px-2 py-1" placeholder="Значення" />
-                        <input v-if="getType(subRule.field) === 'number'" v-model="subRule.value" type="number" class="w-60 border rounded px-2 py-1" placeholder="Число" />
-                        <select v-if="getType(subRule.field) === 'boolean'" v-model="subRule.value" class="w-48 border rounded px-2 py-1">
-                          <option :value="true">Так</option>
-                          <option :value="false">Ні</option>
-                        </select>
-                        <select v-if="getType(subRule.field) === 'select' && subRule.field !== 'product_variation_id'" v-model="subRule.value" class="w-60 border rounded px-2 py-1">
-                          <option v-for="option in getOptions(subRule.field, subRule)" :value="option.id" :key="option.id">{{ option.name }}</option>
-                        </select>
-                        <select v-if="subRule.field === 'product_variation_id'" v-model="subRule.value" class="w-60 border rounded px-2 py-1" placeholder="Варіація">
-                          <option v-for="option in getOptions(subRule.field, subRule)" :value="option.id" :key="option.id">{{ option.name }}</option>
-                        </select>
-                    
-                        <MultiSelect v-if="getType(subRule.field) === 'multiselect'" v-model="subRule.value" :options="getOptions(subRule.field, rule)" optionLabel="name" optionValue="id" filter 
+                      <div v-if="!subRule.rules"
+                        class="flex items-center gap-3 bg-white p-3 rounded-md shadow-sm  border border-gray-200 ">
+
+
+                        <!--Выбор поля-->
+                        <Select v-model="subRule.field" optionValue="value" size="small" :options="fields"
+                          optionLabel="label" filter filterPlaceholder="Пошук..." placeholder="Оберіть поле"
                           class="w-60" />
-                        <input v-if="getType(subRule.field) === 'date' && subRule.operator !== 'між'" v-model="subRule.value" type="date" class="w-60 border rounded px-2 py-1" />
+
+                        <!--Выбор оператора-->
+
+                        <Select v-model="subRule.operator" :options="getOperators(getType(subRule.field))"
+                          class="w-48 border rounded" placeholder="Оператор" />
+
+                        <!--Выбор значений-->
+                        <Select v-if="getType(subRule.field) === 'boolean'" v-model="subRule.value"
+                          :options="[{ label: 'Так', value: true }, { label: 'Ні', value: false }]" optionLabel="label"
+                          optionValue="value" class="w-60 border rounded" placeholder="Оберіть значення" />
+                        <Select v-if="getType(subRule.field) === 'select' && subRule.field !== 'product_variation_id'"
+                          v-model="subRule.value" :options="getOptions(subRule.field, subRule)"
+                          class="w-60 border rounded" placeholder="Оберіть значення" optionLabel="name" optionValue="id"
+                          filter />
+                        <Select v-if="subRule.field === 'product_variation_id'" v-model="subRule.value"
+                          :options="getOptions(subRule.field, subRule)" class="w-60 border rounded"
+                          placeholder="Оберіть значення" optionLabel="name" optionValue="id" filter />
+
+                        <MultiSelect v-if="getType(subRule.field) === 'multiselect'" v-model="subRule.value"
+                          :options="getOptions(subRule.field, subRule)" optionLabel="name" optionValue="id" filter
+                          class="w-60" />
+
+
+                        <InputText v-if="getType(subRule.field) === 'string'" v-model="subRule.value"
+                          class="w-60 border rounded px-2 py-1" placeholder="Значення" />
+                        <InputText v-if="getType(subRule.field) === 'number'" v-model="subRule.value" type="number"
+                          class="w-60 border rounded px-2 py-1" placeholder="Число" />
+
+                        <InputText v-if="getType(subRule.field) === 'date' && subRule.operator !== 'між'"
+                          v-model="subRule.value" type="date" class="w-60 border rounded px-2 py-1" />
                         <div v-if="getType(subRule.field) === 'date' && subRule.operator === 'між'" class="flex gap-2">
-                          <input v-model="subRule.value[0]" type="date" class="w-28 border rounded px-2 py-1" />
-                          <input v-model="subRule.value[1]" type="date" class="w-28 border rounded px-2 py-1" />
+                          <InputText v-model="subRule.value[0]" type="date" class="w-auto border rounded px-2 py-1" />
+                          <InputText v-model="subRule.value[1]" type="date" class="w-auto border rounded px-2 py-1" />
                         </div>
+
                         <button @click="removeRule(rule.rules, subIndex)" class="text-red-500 hover:text-red-700">
                           <Trash class="w-5 h-5" />
                         </button>
                       </div>
 
                       <!-- Группа второго уровня -->
-                      <div v-else class="pl-6 border-l-2 border-black border-t border-t-gray-200 border-b border-b-gray-200 border-r border-r-gray-200 bg-white p-3 rounded-md shadow-sm">
+                      <div v-else
+                        class="pl-6 border-l-2 border-black border-t border-t-gray-200 border-b border-b-gray-200 border-r border-r-gray-200 bg-white p-3 rounded-md shadow-sm">
                         <div class="flex items-center gap-3 mb-3">
                           <span class="font-semibold text-sm text-black">Група умов (Рівень 2):</span>
                           <select v-model="subRule.condition" class="border rounded px-2 py-1 bg-white">
@@ -472,34 +574,57 @@ const getTooltipText = (items) => {
 
                         <div class="space-y-3">
                           <template v-for="(deepRule, deepIndex) in subRule.rules" :key="deepIndex">
-                            <div class="flex items-center gap-3 bg-white p-3 rounded-md shadow-sm border border-gray-200">
-                              <select v-model="deepRule.field" class="w-56 border rounded px-2 py-1" placeholder="Поле">
-                                <option v-for="field in fields" :value="field.value" :key="field.value">{{ field.label }}</option>
-                              </select>
-                              <select v-model="deepRule.operator" class="w-48 border rounded px-2 py-1" placeholder="Оператор">
-                                <option v-for="op in getOperators(getType(deepRule.field))" :value="op" :key="op">{{ op }}</option>
-                              </select>
-                              <input v-if="getType(deepRule.field) === 'string'" v-model="deepRule.value" class="w-60 border rounded px-2 py-1" placeholder="Значення" />
-                              <input v-if="getType(deepRule.field) === 'number'" v-model="deepRule.value" type="number" class="w-60 border rounded px-2 py-1" placeholder="Число" />
-                              <select v-if="getType(deepRule.field) === 'boolean'" v-model="deepRule.value" class="w-48 border rounded px-2 py-1">
-                                <option :value="true">Так</option>
-                                <option :value="false">Ні</option>
-                              </select>
-                              <select v-if="getType(deepRule.field) === 'select' && deepRule.field !== 'product_variation_id'" v-model="deepRule.value" class="w-60 border rounded px-2 py-1">
-                                <option v-for="option in getOptions(deepRule.field, deepRule)" :value="option.id" :key="option.id">{{ option.name }}</option>
-                              </select>
-                              <select v-if="deepRule.field === 'product_variation_id'" v-model="deepRule.value" class="w-60 border rounded px-2 py-1" placeholder="Варіація">
-                                <option v-for="option in getOptions(deepRule.field, deepRule)" :value="option.id" :key="option.id">{{ option.name }}</option>
-                              </select>
-                        
-                              <MultiSelect v-if="getType(deepRule.field) === 'multiselect'" v-model="deepRule.value" :options="getOptions(deepRule.field, deepRule)" optionLabel="name" optionValue="id" filter 
-                              class="w-60" />
-                              <input v-if="getType(deepRule.field) === 'date' && deepRule.operator !== 'між'" v-model="deepRule.value" type="date" class="w-60 border rounded px-2 py-1" />
-                              <div v-if="getType(deepRule.field) === 'date' && deepRule.operator === 'між'" class="flex gap-2">
-                                <input v-model="deepRule.value[0]" type="date" class="w-28 border rounded px-2 py-1" />
-                                <input v-model="deepRule.value[1]" type="date" class="w-28 border rounded px-2 py-1" />
+                            <div
+                              class="flex items-center gap-3 bg-white p-3 rounded-md shadow-sm border border-gray-200">
+
+                              <!--Выбор поля-->
+                              <Select v-model="deepRule.field" optionValue="value" size="small" :options="fields"
+                                optionLabel="label" filter filterPlaceholder="Пошук..." placeholder="Оберіть поле"
+                                class="w-60" />
+
+                              <!--Выбор оператора-->
+
+                              <Select v-model="deepRule.operator" :options="getOperators(getType(deepRule.field))"
+                                class="w-48 border rounded" placeholder="Оператор" />
+
+                              <!--Выбор значений-->
+                              <Select v-if="getType(deepRule.field) === 'boolean'" v-model="deepRule.value"
+                                :options="[{ label: 'Так', value: true }, { label: 'Ні', value: false }]"
+                                optionLabel="label" optionValue="value" class="w-60 border rounded"
+                                placeholder="Оберіть значення" />
+                              <Select
+                                v-if="getType(deepRule.field) === 'select' && deepRule.field !== 'product_variation_id'"
+                                v-model="deepRule.value" :options="getOptions(deepRule.field, deepRule)"
+                                class="w-60 border rounded" placeholder="Оберіть значення" optionLabel="name"
+                                optionValue="id" filter />
+                              <Select v-if="deepRule.field === 'product_variation_id'" v-model="deepRule.value"
+                                :options="getOptions(deepRule.field, deepRule)" class="w-60 border rounded"
+                                placeholder="Оберіть значення" optionLabel="name" optionValue="id" filter />
+
+                              <MultiSelect v-if="getType(deepRule.field) === 'multiselect'" v-model="deepRule.value"
+                                :options="getOptions(deepRule.field, deepRule)" optionLabel="name" optionValue="id"
+                                filter class="w-60" />
+
+
+                              <InputText v-if="getType(deepRule.field) === 'string'" v-model="deepRule.value"
+                                class="w-60 border rounded px-2 py-1" placeholder="Значення" />
+                              <InputText v-if="getType(deepRule.field) === 'number'" v-model="deepRule.value"
+                                type="number" class="w-60 border rounded px-2 py-1" placeholder="Число" />
+
+                              <InputText v-if="getType(deepRule.field) === 'date' && deepRule.operator !== 'між'"
+                                v-model="deepRule.value" type="date" class="w-60 border rounded px-2 py-1" />
+                              <div v-if="getType(deepRule.field) === 'date' && deepRule.operator === 'між'"
+                                class="flex gap-2">
+                                <InputText v-model="deepRule.value[0]" type="date"
+                                  class="w-auto border rounded px-2 py-1" />
+                                <InputText v-model="deepRule.value[1]" type="date"
+                                  class="w-auto border rounded px-2 py-1" />
                               </div>
-                              <button @click="removeRule(subRule.rules, deepIndex)" class="text-red-500 hover:text-red-700">
+
+
+
+                              <button @click="removeRule(subRule.rules, deepIndex)"
+                                class="text-red-500 hover:text-red-700">
                                 <Trash class="w-5 h-5" />
                               </button>
                             </div>
@@ -507,15 +632,15 @@ const getTooltipText = (items) => {
                         </div>
 
                         <div class="flex gap-2">
-                          <Button size="small" variant="link" @click="addRule(subRule.rules)"  label="+ Умова" />
+                          <Button size="small" variant="link" @click="addRule(subRule.rules)" label="+ Умова" />
                         </div>
                       </div>
                     </template>
                   </div>
 
                   <div class="flex gap-2 mt-3">
-                    <Button size="small" variant="link" @click="addRule(rule.rules)"  label="+ Умова" />
-                    <Button size="small" @click="addGroup(rule.rules)"  label="+ Група" />
+                    <Button size="small" variant="link" @click="addRule(rule.rules)" label="+ Умова" />
+                    <Button size="small" @click="addGroup(rule.rules)" severity="secondary" label="+ Група" />
 
                   </div>
                 </div>
@@ -523,24 +648,37 @@ const getTooltipText = (items) => {
             </div>
 
             <div class="flex gap-3 mt-6">
-              <button @click="addRule(filter.rules)" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">+ Додати правило</button>
-              <button @click="addGroup(filter.rules)" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">+ Додати групу</button>
-              <button @click="resetFilter" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Скинути</button>
-              <button @click="applyFilter" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">🔍 Застосувати</button>
+
+              <Button variant="link" @click="addRule(filter.rules)" label="+ Додати правило" />
+              <Button @click="addGroup(filter.rules)" severity="secondary" label="+ Додати групу" />
+              <Button @click="resetAllFilters" severity="danger" label="Скинути всі фільтри" />
+              <Button @click="loadStatistics" :disabled="isLoading">
+                <span v-if="isLoading">Завантаження...</span>
+                <span class="" v-else>🔍 Застосувати фільтри</span>
+              </Button>
+
+
             </div>
+
           </div>
+
+
+
         </div>
 
         <div class="w-1/3">
           <div class="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
             <div class="flex gap-2 items-end mb-4">
               <input v-model="newFilterName" placeholder="Назва фільтра" class="w-64 border rounded px-2 py-1" />
-              <button @click="saveCurrentFilter" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">💾 Зберегти</button>
+              <button @click="saveCurrentFilter" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">💾
+                Зберегти</button>
             </div>
             <div v-if="savedFilters.length" class="space-y-2">
-              <div class="font-semibold text-gray-700">📂 Збережені фільтри:</div>
+              <div class="font-semibold text-gray-700">📂 Збережені фільтри (Поки локально в браузері):</div>
               <div class="flex flex-wrap gap-2">
-                <div v-for="(f, index) in savedFilters" :key="index" class="flex items-center gap-2 border border-gray-300 px-3 py-1 rounded cursor-pointer hover:bg-gray-100 transition" @click="applySavedFilter(f.data)">
+                <div v-for="(f, index) in savedFilters" :key="index"
+                  class="flex items-center gap-2 border border-gray-300 px-3 py-1 rounded cursor-pointer hover:bg-gray-100 transition"
+                  @click="applySavedFilter(f.data)">
                   <span class="text-sm font-medium">{{ f.name }}</span>
                   <button @click.stop="deleteFilter(index)" class="text-red-500 hover:text-red-700">
                     <Trash class="w-4 h-4" />
@@ -550,86 +688,138 @@ const getTooltipText = (items) => {
             </div>
           </div>
           <div class="mt-5">
-            <Fieldset legend="JSON для перевірки:" :toggleable="true" :collapsed="true">
+            <Fieldset legend="JSON дебаг:" :toggleable="true" :collapsed="true">
               <pre class="bg-gray-100 p-3 rounded text-xs">{{ JSON.stringify(filter, null, 2) }}</pre>
             </Fieldset>
           </div>
         </div>
       </div>
 
-      <div class="mt-6">
-          <h2 class="text-2xl font-bold">📊 Статистика</h2>
-          <div class="grid grid-cols-2 gap-4 mt-2">
-            <div class="bg-gray-100 p-4 rounded-lg">
-              <p class="font-semibold">Кількість замовлень: {{ stats.order_count }}</p>
 
-              <p>Кількість товарів загальна: {{ (stats.items_count_non_services + stats.items_count_services) }}</p>
-              <p>Кількість товарів (не Services): {{ stats.items_count_non_services }}</p>
-              <p>Кількість товарів (Services): {{ stats.items_count_services }}</p>
+      <div class="mt-6" v-if="stats.order_count">
+        <h2 class="text-2xl font-bold">📊 Статистика</h2>
+        <div class="grid grid-cols-2 gap-4 mt-3">
+          <div class="bg-gray-100 p-4 rounded-lg">
+            <p class="font-semibold">Кількість замовлень: {{ stats?.order_count || 0 }}</p>
+
+            <p>Кількість товарів загальна: {{ (stats.items_count_non_services || 0) + (stats.items_count_services || 0)
+            }}</p>
+            <p>Кількість товарів (не Services): {{ (stats.items_count_non_services || 0) }}</p>
+            <p>Кількість товарів (Services): {{ (stats.items_count_services || 0) }}</p>
+          </div>
+
+          <div class="bg-gray-100 p-4 rounded-lg">
+            <p>
+              Сума загальна: {{ ((stats?.total_sum_non_services || 0) + (stats?.total_sum_services || 0)).toFixed(2)
+              }}
+              (ПДВ {{ (((stats.total_sum_non_services || 0) + (stats.total_sum_services || 0)) * 0.23).toFixed(2) }})
+            </p>
+            <p>Сума Основна: {{ (stats.total_sum_non_services || 0).toFixed(2) }}</p>
+            <p>Сума Сервісна: {{ (stats.total_sum_services || 0).toFixed(2) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-6">
+
+        <div class="flex gap-4 mt-2">
+
+          <div class="w-2/3" v-if="aggregatedProducts[0]">
+            <div class="flex justify-between">
+              <h2 class="text-xl font-bold">📦 Статистика по товарах</h2>
+              <div class="flex items-center gap-3">
+
+
+                <Select v-model="aggregationMode" optionValue="value" size="small" :options="aggregationModes"
+                  optionLabel="label" placeholder="Агрегація" class="w-full" />
+
+              </div>
             </div>
-            <div class="bg-gray-100 p-4 rounded-lg">
-              <p>
-                Сума загальна: {{ (stats.total_sum_non_services + stats.total_sum_services).toFixed(2) }} 
-                (ПДВ {{ ((stats.total_sum_non_services + stats.total_sum_services) * 0.23).toFixed(2) }})
-              </p>
-              <p>Сума Основна: {{ stats.total_sum_non_services.toFixed(2) }}</p>
-              <p>Сума Сервісна: {{ stats.total_sum_services.toFixed(2) }}</p>
+            <DataTable :value="aggregatedProducts" class="mt-5" showGridlines scrollable size="small"
+              :sortField="'category_name'" :sortOrder="1">
+              <Column field="product_name" header="Назва товару" sortable
+                v-if="aggregationMode !== 'by_category' && aggregationMode !== 'by_attributes'">
+                <template #body="{ data }">
+                  <span>{{ data.product_name || '—' }}</span>
+                </template>
+              </Column>
+              <Column field="attributes" header="Атрибути" sortable
+                v-if="aggregationMode === 'by_product_with_attributes' || aggregationMode === 'by_attributes'">
+                <template #body="{ data }">
+                  <span>{{ data.attributes || 'Без атрибутів' }}</span>
+                </template>
+              </Column>
+              <Column field="category_name" header="Категорія" sortable v-if="aggregationMode !== 'by_attributes'">
+                <template #body="{ data }">
+                  <span>{{ data.category_name || '—' }}</span>
+                </template>
+              </Column>
+              <Column field="quantity" header="Кількість" sortable />
+              <Column field="total_sum" header="Сума" sortable>
+                <template #body="{ data }">
+                  <span>{{ data.total_sum.toFixed(2) }}</span>
+                </template>
+              </Column>
+              <Column field="quantity_percent" sortable
+                header="Кількість товару в замовленнях / Кількість замовлень * 100">
+                <template #body="{ data }">
+                  <span>{{ data.quantity_percent }}%</span>
+                </template>
+              </Column>
+              <Column field="sum_percent" sortable header="Сума товару / Загальну суму замовлень * 100">
+                <template #body="{ data }">
+                  <span>{{ data.sum_percent }}%</span>
+                </template>
+              </Column>
+            </DataTable>
+          </div>
+
+          <div class="w-1/3" v-if="stats.status_stats">
+            <h2 class="text-xl font-bold">📉 Статистика по статусах</h2>
+            <div class="bg-white border border-gray-200 p-4 mt-6">
+              <div class="space-y-2">
+                <div v-for="stat in stats.status_stats" :key="stat.name" class="flex items-center text-sm ">
+                  <!-- Название статуса -->
+                  <span class="w-32 text-gray-600">{{ stat.name }}</span>
+
+                  <!-- Прогресс-бар -->
+                  <div class="flex-1 mx-2 bg-gray-100 rounded-full h-2.5">
+                    <div class="h-full rounded-full bg-blue-400"
+                      :style="{ width: `${(stat.count / stats.order_count * 100).toFixed(2)}%` }"></div>
+                  </div>
+
+                  <!-- Числовые значения -->
+                  <div class="flex w-24 justify-between">
+                    <span class="text-gray-700 font-medium">
+                      {{ (stat.count / stats.order_count * 100).toFixed(2) }}%
+                    </span>
+                    <span class="text-gray-500">
+                      ({{ stat.count }})
+                    </span>
+                  </div>
+
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="mt-6">
-          <h2 class="text-xl font-bold">📦 Статистика по товарах</h2>
-          <div class="flex items-center gap-3 mt-2">
-            <span class="font-semibold text-sm">Режим відображення:</span>
-            <select v-model="aggregationMode" class="border rounded px-2 py-1 bg-white">
-              <option v-for="mode in aggregationModes" :value="mode.value" :key="mode.value">{{ mode.label }}</option>
-            </select>
-          </div>
-          <DataTable :value="aggregatedProducts" class="mt-2" showGridlines scrollable size="small">
-            <Column field="product_name" header="Назва товару" v-if="aggregationMode !== 'by_category' && aggregationMode !== 'by_attributes'">
-              <template #body="{ data }">
-                <span>{{ data.product_name || '—' }}</span>
-              </template>
-            </Column>
-            <Column field="attributes" header="Атрибути" v-if="aggregationMode === 'by_product_with_attributes' || aggregationMode === 'by_attributes'">
-              <template #body="{ data }">
-                <span>{{ data.attributes || 'Без атрибутів' }}</span>
-              </template>
-            </Column>
-            <Column field="category_name" header="Категорія" v-if="aggregationMode !== 'by_attributes'">
-              <template #body="{ data }">
-                <span>{{ data.category_name || '—' }}</span>
-              </template>
-            </Column>
-            <Column field="quantity" header="Кількість" />
-            <Column field="total_sum" header="Сума">
-              <template #body="{ data }">
-                <span>{{ data.total_sum.toFixed(2) }}</span>
-              </template>
-            </Column>
-            <Column field="quantity_percent" header="Кількість товару в замовленнях / Кількість замовлень * 100">
-              <template #body="{ data }">
-                <span>{{ data.quantity_percent }}%</span>
-              </template>
-            </Column>
-            <Column field="sum_percent" header="Сума товару / Загальну суму замовлень * 100">
-              <template #body="{ data }">
-                <span>{{ data.sum_percent }}%</span>
-              </template>
-            </Column>
-          </DataTable>
-        </div>
-          
+
         </div>
 
+      </div>
 
 
-      <DataTable :value="orders" resizableColumns columnResizeMode="expand" paginator :rows="20" :total-records="orders.length" :rowsPerPageOptions="[5, 10, 20, 50]" showGridlines dataKey="id" scrollable size="small">
+
+      <DataTable :value="orders" resizableColumns columnResizeMode="expand" paginator :rows="20" v-if="orders[0]"
+        :total-records="orders.length" :rowsPerPageOptions="[5, 10, 20, 50]" showGridlines dataKey="id" scrollable
+        size="small">
         <Column field="id" header="ID" bodyStyle="text-align:center" style="min-width:50px;" />
         <Column class="w-[40px]" header="Статус">
           <template #body="{ data }">
-            <span v-if="data.status" class="rounded flex items-center justify-center p-1 text-white text-xs" :style="{ backgroundColor: `#${data.status.color}` }">{{ data.status.name }}</span>
-            <span v-else class="rounded flex items-center justify-center p-1 text-white bg-black text-xs">Без статусу</span>
+            <span v-if="data.status" class="rounded flex items-center justify-center p-1 text-white text-xs"
+              :style="{ backgroundColor: `#${data.status.color}` }">{{ data.status.name }}</span>
+            <span v-else class="rounded flex items-center justify-center p-1 text-white bg-black text-xs">Без
+              статусу</span>
           </template>
         </Column>
         <Column field="calculated_total" header="Сума товарів">
@@ -640,36 +830,38 @@ const getTooltipText = (items) => {
         <Column field="email" header="Email" />
         <Column field="comment" header="Коментар" bodyClass="cursor-help" bodyStyle="max-width:250px">
           <template #body="{ data }">
-            <div class="w-full h-full truncate" v-tooltip.top="{ value: data.comment, showDelay: 1000, hideDelay: 300, class: 'text-sm' }">{{ data.comment }}</div>
+            <div class="w-full h-full truncate"
+              v-tooltip.top="{ value: data.comment, showDelay: 1000, hideDelay: 300, class: 'text-sm' }">{{ data.comment
+              }}</div>
           </template>
         </Column>
-        <Column header="Товари" bodyStyle="max-width:300px" >
-        <template #body="{ data }">
-          <div v-if="data.items.length > 0"
-            v-tooltip.top="{ value: getTooltipText(data.items), showDelay: 500, hideDelay: 300, escape: false, class: 'text-sm custom-tooltip ', }">
-            <!-- Первый товар -->
-            <div class="text-sm truncate">
-              <span v-if="data.items[0].product_id">
-                {{ data.items[0].product.name }}
-              </span>
-              <span v-else-if="data.items[0].product_variation_id">
-                {{ data.items[0].product_variation.product.name }}
-              </span>
-              <span v-else>Товар не знайдено...</span>
+        <Column header="Товари" bodyStyle="max-width:300px">
+          <template #body="{ data }">
+            <div v-if="data.items.length > 0"
+              v-tooltip.top="{ value: getTooltipText(data.items), showDelay: 500, hideDelay: 300, escape: false, class: 'text-sm custom-tooltip ', }">
+              <!-- Первый товар -->
+              <div class="text-sm truncate">
+                <span v-if="data.items[0].product_id">
+                  {{ data.items[0].product.name }}
+                </span>
+                <span v-else-if="data.items[0].product_variation_id">
+                  {{ data.items[0].product_variation.product.name }}
+                </span>
+                <span v-else>Товар не знайдено...</span>
 
-              <span v-if="data.items[0].product_variation_id">
-                | {{ formatVariationName(data.items[0].product_variation) }}
-              </span>
+                <span v-if="data.items[0].product_variation_id">
+                  | {{ formatVariationName(data.items[0].product_variation) }}
+                </span>
 
-              | x{{ data.items[0].quantity }}
-              | {{ data.items[0].price }}
+                | x{{ data.items[0].quantity }}
+                | {{ data.items[0].price }}
+              </div>
+
+
             </div>
+          </template>
 
-
-          </div>
-        </template>
-     
-      </Column>
+        </Column>
         <Column field="responsible_user.name" header="Відповідальний" />
         <Column field="delivery_city" header="Місто" />
         <Column field="delivery_address" header="Адреса" />
@@ -677,8 +869,10 @@ const getTooltipText = (items) => {
         <Column field="payment_method.name" header="Метод оплати" />
         <Column class="w-[40px]" header="Оплата" field="is_paid">
           <template #body="{ data }">
-            <span v-if="data.is_paid" class="rounded flex items-center justify-center p-1 text-white text-xs bg-green-500">Оплачено</span>
-            <span v-else class="rounded flex items-center justify-center p-1 text-white bg-black text-xs">Не оплачено</span>
+            <span v-if="data.is_paid"
+              class="rounded flex items-center justify-center p-1 text-white text-xs bg-green-500">Оплачено</span>
+            <span v-else class="rounded flex items-center justify-center p-1 text-white bg-black text-xs">Не
+              оплачено</span>
           </template>
         </Column>
         <Column field="delivery_method.name" header="Доставка" />
