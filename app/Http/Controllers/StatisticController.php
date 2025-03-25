@@ -36,7 +36,7 @@ class StatisticController extends Controller
     {
         $request->validate([
             'mandatory_date' => 'required|array',
-            'mandatory_date.field' => 'required|in:created_at,delivery_date,sent_at,updated_at',
+            'mandatory_date.field' => 'required|in:created_at,delivery_date,sent_at,updated_at,payment_date',
             'mandatory_date.range' => 'required|array|size:2',
             'filters' => 'nullable|array'
         ]);
@@ -102,7 +102,7 @@ class StatisticController extends Controller
                 $status->id => [
                     'count' => $orders->where('order_status_id', $status->id)->count(),
                     'name' => $status->name,
-                    'color' => $status->color // сохраняем цвет для фронтенда
+                    'color' => $status->color
                 ]
             ];
         })->sortByDesc('count')->values()->toArray();
@@ -213,13 +213,33 @@ class StatisticController extends Controller
         $operator = $rule['operator'] ?? null;
         $value = $rule['value'] ?? null;
 
-        if (!$field || !$operator || is_null($value)) {
+        if (!$field || !$operator) {
+            return;
+        }
+    
+        // Для операторов проверки наличия значения пропускаем проверку value
+        if (in_array($operator, ['є значення', 'немає значення'])) {
+            $this->applyDefaultFilter($query, $field, $operator, null, $method);
+            return;
+        }
+    
+        // Для остальных операторов проверяем value
+        if (is_null($value)) {
             return;
         }
 
         // Специальная обработка взаимоисключающих условий для статусов
         if ($field === 'order_status_id') {
             $this->applyStatusFilter($query, $operator, $value, $method);
+            return;
+        }
+
+        if ($field === 'items_count') {
+            $query->{$method.'Has'}('items', function($q) use ($operator, $value) {
+                $q->selectRaw('order_id, SUM(quantity) as total_quantity')
+                  ->groupBy('order_id')
+                  ->having('total_quantity', $operator, $value);
+            });
             return;
         }
 
@@ -312,6 +332,18 @@ class StatisticController extends Controller
                 break;
             case 'не дорівнює':
                 $query->{$method}($field, '!=', $value);
+                break;
+            case 'є значення': // Новый оператор - поле не пустое
+                $query->{$method}(function($q) use ($field) {
+                    $q->whereNotNull($field)
+                        ->where($field, '!=', '');
+                });
+                break;
+            case 'немає значення': // Новый оператор - поле пустое
+                $query->{$method}(function($q) use ($field) {
+                    $q->whereNull($field)
+                        ->orWhere($field, '=', '');
+                });
                 break;
             case '=':
             case '!=':

@@ -12,6 +12,9 @@ const productsStats = ref(page.props.products_stats || []);
 const users = ref([]);
 const orders = ref(page.props.orders || []);
 const deliveryMethods = ref([]);
+const paymentMethods = ref([]);
+const groups = ref([]);
+
 const products = ref([]);
 const variationsMap = ref({});
 const savedFilters = ref([]);
@@ -228,6 +231,8 @@ const deleteFilter = (index) => {
 onMounted(() => {
   loadUsers();
   loadDeliveryMethods();
+  loadPaymentMethods();
+  loadGroups();
   loadSavedFilters();
   loadProducts();
 
@@ -252,6 +257,20 @@ const loadUsers = async () => {
 const loadDeliveryMethods = async () => {
   const res = await axios.get("/delivery-methods/getall");
   deliveryMethods.value = res.data.delivery_methods;
+};
+
+const loadPaymentMethods = async () => {
+  const res = await axios.get("/payment-methods/getall");
+  paymentMethods.value = res.data.payment_methods;
+};
+
+const loadGroups = () => {
+  if (groups.value.length > 0) {
+    return;
+  }
+  axios.get('/groups/getall').then(response => {
+    groups.value = response.data.groups;
+  });
 };
 
 const loadProducts = async () => {
@@ -282,6 +301,7 @@ const dateFields = [
   { label: 'Дата створення', value: 'created_at' },
   { label: 'Дата оновлення', value: 'updated_at' },
   { label: 'Дата відправки', value: 'sent_at' },
+  { label: 'Дата оплати', value: 'payment_date' },
   { label: 'Дата доставки', value: 'delivery_date' }
 ]
 
@@ -289,22 +309,43 @@ const fields = [
   { label: "Email", value: "email", type: "string" },
   { label: "Телефон", value: "phone", type: "string" },
   { label: "Ім'я одержувача", value: "delivery_fullname", type: "string" },
-  { label: "Статуси", value: "order_status_id", type: "multiselect", options: statuses },
-  { label: "Оплата", value: "is_paid", type: "boolean" },
-  { label: "Місто", value: "delivery_city", type: "string" },
-  { label: "Дата доставки", value: "delivery_date", type: "date" },
-  { label: "Дата створення", value: "created_at", type: "date" },
-  { label: "Сума оплати", value: "paid_amount", type: "number" },
-  { label: "Менеджер", value: "responsible_user_id", type: "select", options: users },
+  { label: "Статус замовлення", value: "order_status_id", type: "multiselect", options: statuses },
+  { label: "Метод оплати", value: "payment_method_id", type: "select", options: paymentMethods },
   { label: "Метод доставки", value: "delivery_method_id", type: "select", options: deliveryMethods },
+  { label: "Група", value: "group_id", type: "select", options: groups },
+  { label: "Відповідальний", value: "responsible_user_id", type: "select", options: users },
+  { label: "Адреса доставки", value: "delivery_address", type: "string" },
+  { label: "Номер будинку", value: "delivery_address_number", type: "string" },
+  { label: "Додаткова адреса", value: "delivery_second_address", type: "string" },
+  { label: "Поштовий індекс", value: "delivery_postcode", type: "string" },
+  { label: "Місто", value: "delivery_city", type: "string" },
+  { label: "Область/штат", value: "delivery_state", type: "string" },
+  { label: "IP-адреса", value: "ip", type: "string" },
+  { label: "Коментар", value: "comment", type: "string" },
+  { label: "Website Reffer", value: "website_referrer", type: "string" },
+  { label: "UTM Source", value: "utm_source", type: "string" },
+  { label: "UTM Medium", value: "utm_medium", type: "string" },
+  { label: "UTM Term", value: "utm_term", type: "string" },
+  { label: "UTM Content", value: "utm_content", type: "string" },
+  { label: "UTM Campaign", value: "utm_campaign", type: "string" },
+  { label: "Дата доставки", value: "delivery_date", type: "date" },
+  { label: "Дата відправки", value: "sent_at", type: "date" },
+  { label: "Дата оплати", value: "payment_date", type: "date" },
+  { label: "Трекінг номер", value: "tracking_number", type: "string" },
+  { label: "Оплачено", value: "is_paid", type: "boolean" },
+  { label: "Сума сплачена клієнтом", value: "paid_amount", type: "number" },
   { label: "Сума замовлення", value: "calculated_total", type: "number" },
   { label: "Товар", value: "product_id", type: "select", options: products },
   { label: "Варіація товару", value: "product_variation_id", type: "select", options: [] },
   { label: "Категорія товару", value: "category_id", type: "select", options: categories },
+  { label: "Кількість товарів в замовленні", value: "items_count", type: "number" },
+  { label: "inpost_id", value: "inpost_id", type: "string" },
+  { label: "inpost_status", value: "inpost_status", type: "string" },
+  { label: "return_tracking_number", value: "return_tracking_number", type: "string" },
 ];
 
 const operators = {
-  string: ["містить", "не містить", "дорівнює", "не дорівнює"],
+  string: ["містить", "не містить", "дорівнює", "не дорівнює", "є значення", "немає значення"],
   number: ["=", "!=", "<", "<=", ">", ">="],
   boolean: ["дорівнює"],
   date: ["між"],
