@@ -34,7 +34,7 @@ class OrdersController extends Controller
         $user = auth()->user();
 
         // Разрешенные поля для сортировки
-        $allowedSortFields = ['id', 'created_at', 'updated_at', 'sent_at', 'delivery_date', 'delivery_fullname', 'phone', 'email', 'delivery_city', 'order_status_id', 'is_paid', 'comment','responsible_user_id', 'delivery_address', 'delivery_postcode', 'delivery_method_id', 'payment_method_id', 'group_id', 'tracking_number', 'ip', 'website_referrer', 'utm_source', 'utm_medium', 'utm_campaign','utm_content', 'utm_term', 'product_id'];
+        $allowedSortFields = ['id', 'created_at', 'updated_at', 'sent_at', 'inpost_payment_date', 'delivery_date', 'delivery_fullname', 'phone', 'email', 'delivery_city', 'order_status_id', 'is_paid', 'comment','responsible_user_id', 'delivery_address', 'delivery_postcode', 'delivery_method_id', 'payment_method_id', 'group_id', 'tracking_number', 'ip', 'website_referrer', 'utm_source', 'utm_medium', 'utm_campaign','utm_content', 'utm_term', 'product_id'];
 
         // Проверка сортировки
         if (!in_array($sortBy, $allowedSortFields)) {
@@ -88,6 +88,17 @@ class OrdersController extends Controller
         if ($request->has('sent_at_to')) {
             $ordersQuery->whereDate('sent_at', '<=', $request->input('sent_at_to'));
         }
+
+        if ($request->has('inpost_payment_date_from')) {
+            $ordersQuery->whereDate('inpost_payment_date', '>=', $request->input('inpost_payment_date_from'));
+        }
+        
+        if ($request->has('inpost_payment_date_to')) {
+            $ordersQuery->whereDate('inpost_payment_date', '<=', $request->input('inpost_payment_date_to'));
+        }
+
+
+        
 
         if ($request->has('delivery_date_from')) {
             $ordersQuery->whereDate('delivery_date', '>=', $request->input('delivery_date_from'));
@@ -246,6 +257,7 @@ class OrdersController extends Controller
             'items.*.price' => 'required|numeric|min:0',
             'delivery_date' => 'nullable|date_format:Y-m-d H:i',
             'sent_at' => 'nullable|datetime',
+            'inpost_payment_date' => 'nullable|date_format:Y-m-d H:i',
             'payment_date' => 'nullable|date_format:Y-m-d H:i',
             'tracking_number' => 'nullable|string|max:255', // Новое поле
             'is_paid' => 'nullable|boolean', // Новое поле
@@ -406,6 +418,7 @@ class OrdersController extends Controller
             'sub_ids.*' => 'nullable|string|max:255',
             'delivery_date' => 'nullable|date',
             'sent_at' => 'nullable|date',
+            'inpost_payment_date' => 'nullable|date',
             'payment_date' => 'nullable|date',
             'tracking_number' => 'nullable|string|max:255', // Новое поле
             'is_paid' => 'nullable|boolean', // Новое поле
@@ -685,6 +698,7 @@ class OrdersController extends Controller
         $newOrder->return_tracking_number = null;
         $newOrder->inpost_id = null;
         $newOrder->inpost_status = null;
+        
 
         // Добавляем " (Копія)" к имени получателя, чтобы различать
         $newOrder->delivery_fullname = $order->delivery_fullname . " (Копія)";

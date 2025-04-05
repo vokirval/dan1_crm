@@ -26,6 +26,11 @@ class User extends Authenticatable
         'password',
     ];
 
+    public function savedFilters()
+    {
+        return $this->hasMany(SavedFilter::class);
+    }
+
     public function groups(): BelongsToMany
     {
         return $this->belongsToMany(Group::class, 'group_user')->withTimestamps();

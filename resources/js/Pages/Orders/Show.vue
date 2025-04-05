@@ -246,6 +246,7 @@ const form = ref({
     responsible_user_id: order.value.responsible_user_id,
     delivery_date: order.value.delivery_date,
     sent_at: order.value.sent_at,
+    inpost_payment_date: order.value.inpost_payment_date,
     payment_date: order.value.payment_date,
     tracking_number: order.value.tracking_number,
     is_paid: order.value.is_paid,
@@ -257,6 +258,7 @@ const updateOrder = () => {
         ...form.value,
         delivery_date: formatDateForApi(form.value.delivery_date),
         sent_at: formatDateForApi(form.value.sent_at),
+        inpost_payment_date: formatDateForApi(form.value.inpost_payment_date),
         payment_date: formatDateForApi(form.value.payment_date),
     };
 
@@ -1096,6 +1098,11 @@ const copyToClipboard = async (caption) => {
                             <DatePicker id="sent_at" dateFormat="yy-mm-dd" v-model="form.sent_at" showTime
                                 hourFormat="24" fluid />
                             <label for="sent_at">Відправлено</label>
+                        </IftaLabel>
+                        <IftaLabel class="mt-5">
+                            <DatePicker id="sent_at" dateFormat="yy-mm-dd" v-model="form.inpost_payment_date" showTime
+                                hourFormat="24" fluid />
+                            <label for="sent_at">Дата переказу грошей від Inpost</label>
                         </IftaLabel>
                         <div class="mt-5 flex gap-3">
                             <IftaLabel class="w-full">

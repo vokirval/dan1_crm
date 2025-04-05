@@ -47,6 +47,7 @@ class Order extends Model
         'delivery_date', // Новое поле
         'sent_at',
         'payment_date',  // Новое поле
+        'inpost_payment_date',
         'tracking_number', // Добавлено
         'is_paid',         // Добавлено
         'paid_amount',     // Добавлено

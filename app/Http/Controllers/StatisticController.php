@@ -36,10 +36,13 @@ class StatisticController extends Controller
     {
         $request->validate([
             'mandatory_date' => 'required|array',
-            'mandatory_date.field' => 'required|in:created_at,delivery_date,sent_at,updated_at,payment_date',
+            'mandatory_date.field' => 'required|in:created_at,delivery_date,sent_at,updated_at,payment_date,inpost_payment_date',
             'mandatory_date.range' => 'required|array|size:2',
             'filters' => 'nullable|array'
         ]);
+
+        $field = $request->input('mandatory_date.field');
+        $range = $request->input('mandatory_date.range');
 
         // Применяем обязательный фильтр даты
         $query = Order::query()
@@ -65,11 +68,16 @@ class StatisticController extends Controller
                             ]);
                 }
             ])
-            ->withSum('items as calculated_total', DB::raw('quantity * price'))
-            ->whereBetween(
-                $request->input('mandatory_date.field'),
-                $request->input('mandatory_date.range')
-            );
+            ->withSum('items as calculated_total', DB::raw('quantity * price'));
+            if ($range[0] === $range[1]) {
+                $query->where($field, '>=', $range[0] . ' 00:00:00')
+                      ->where($field, '<=', $range[1] . ' 23:59:59');
+            } else {
+                $query->whereBetween($field, [
+                    $range[0] . ' 00:00:00',
+                    $range[1] . ' 23:59:59'
+                ]);
+            }
 
         // Применяем дополнительные фильтры (если есть)
         if ($request->filled('filters')) {
@@ -185,7 +193,7 @@ class StatisticController extends Controller
 
     protected function isDateField($field): bool
     {
-        return in_array($field, ['created_at', 'updated_at', 'sent_at', 'delivery_date', 'payment_date']);
+        return in_array($field, ['created_at', 'updated_at', 'sent_at', 'delivery_date', 'payment_date', 'inpost_payment_date']);
     }
 
     protected function applyFilters($query, $group, $parentCondition = 'AND')
@@ -370,23 +378,25 @@ class StatisticController extends Controller
     {
         switch ($operator) {
             case 'дорівнює':
-                $query->{$method . 'Date'}($field, '=', $value);
+                $query->{$method}($field, '>=', $value . ' 00:00:00')
+                    ->{$method}($field, '<=', $value . ' 23:59:59');
                 break;
             case 'не дорівнює':
-                $query->{$method . 'Date'}($field, '!=', $value);
+                $query->{$method}(function($q) use ($field, $value) {
+                    $q->where($field, '<', $value . ' 00:00:00')
+                    ->orWhere($field, '>', $value . ' 23:59:59');
+                });
                 break;
             case 'до':
-                $query->{$method . 'Date'}($field, '<', $value);
+                $query->{$method}($field, '<', $value . ' 00:00:00');
                 break;
             case 'після':
-                $query->{$method . 'Date'}($field, '>', $value);
+                $query->{$method}($field, '>', $value . ' 23:59:59');
                 break;
             case 'між':
                 if (is_array($value) && count($value) === 2) {
-                    $query->{$method}(function ($q) use ($field, $value) {
-                        $q->whereDate($field, '>=', $value[0])
-                            ->whereDate($field, '<=', $value[1]);
-                    });
+                    $query->{$method}($field, '>=', $value[0] . ' 00:00:00')
+                        ->{$method}($field, '<=', $value[1] . ' 23:59:59');
                 }
                 break;
         }

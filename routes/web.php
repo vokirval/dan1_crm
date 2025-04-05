@@ -12,9 +12,9 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderLockController;
+use App\Http\Controllers\StatisticController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\OrderStatusController;
-use App\Http\Controllers\EmailTemplateController;
 
 //php artisan migrate
 //php artisan db:seed --class=DatabaseSeeder
@@ -30,11 +30,12 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/signup', [AuthController::class, 'signup'])->name('signup');
 Route::post('/signup', [AuthController::class, 'storeSignup'])->name('store-signup');
 
+use App\Http\Controllers\SavedFilterController;
+use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\PaymentMethodController;
+
 use App\Http\Controllers\DeliveryMethodController;
 use App\Http\Controllers\ProductsCategoryController;
-
-use App\Http\Controllers\StatisticController;
 
 
 Route::get('/generate-token', function () {
@@ -65,6 +66,11 @@ Route::middleware(['auth'])->group(function() {
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/statistics', [StatisticController::class, 'index']);
     Route::post('/statistics/filter', [StatisticController::class, 'filter']);
+
+    Route::get('statistics/saved-filters', [SavedFilterController::class, 'index']);
+    Route::post('statistics/saved-filters', [SavedFilterController::class, 'store']);
+    Route::delete('statistics/saved-filters/{savedFilter}', [SavedFilterController::class, 'destroy']);
+    
 
     Route::prefix('/products')->group(function(){
 

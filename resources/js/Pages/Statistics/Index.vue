@@ -182,50 +182,55 @@ const aggregatedProducts = computed(() => {
 console.log(aggregatedProducts.value);
 
 // Сохранение фильтра в localStorage (с датой)
-const saveCurrentFilter = () => {
+const saveCurrentFilter = async () => {
   if (!newFilterName.value.trim()) {
     alert("Введіть назву фільтра!");
     return;
   }
 
-  const allFilters = JSON.parse(localStorage.getItem("filterTemplates") || "[]");
-
-  allFilters.push({
-    name: newFilterName.value.trim(),
-    data: {
-      mainFilter: JSON.parse(JSON.stringify(filter)),
-      dateFilter: JSON.parse(JSON.stringify(mandatoryDateFilter))
-    }
-  });
-
-  localStorage.setItem("filterTemplates", JSON.stringify(allFilters));
-  newFilterName.value = "";
-  loadSavedFilters();
+  try {
+    await axios.post('/statistics/saved-filters', {
+      name: newFilterName.value.trim(),
+      main_filter: filter,
+      date_filter: mandatoryDateFilter
+    });
+    newFilterName.value = "";
+    await loadSavedFilters();
+  } catch (error) {
+    console.error('Ошибка сохранения фильтра:', error);
+    alert('Не удалось сохранить фильтр');
+  }
 };
 
 
-const loadSavedFilters = () => {
+const loadSavedFilters = async () => {
   try {
-    savedFilters.value = JSON.parse(localStorage.getItem("filterTemplates") || "[]");
-  } catch {
+    const response = await axios.get('/statistics/saved-filters');
+    savedFilters.value = response.data;
+  } catch (error) {
+    console.error('Ошибка загрузки фильтров:', error);
     savedFilters.value = [];
   }
 };
 
 const applySavedFilter = (savedData) => {
-  Object.assign(filter, JSON.parse(JSON.stringify(savedData.mainFilter)));
-  Object.assign(mandatoryDateFilter, JSON.parse(JSON.stringify(savedData.dateFilter)));
-
+  Object.assign(filter, JSON.parse(JSON.stringify(savedData.main_filter)));
+  Object.assign(mandatoryDateFilter, JSON.parse(JSON.stringify(savedData.date_filter)));
+  
   // Загружаем вариации для продуктов, если есть такие фильтры
-  loadVariationsForFilter(savedData.mainFilter);
+  loadVariationsForFilter(savedData.main_filter);
 };
 
-const deleteFilter = (index) => {
+const deleteFilter = async (id) => {
   if (!confirm("Видалити фільтр?")) return;
-  const all = [...savedFilters.value];
-  all.splice(index, 1);
-  localStorage.setItem("filterTemplates", JSON.stringify(all));
-  loadSavedFilters();
+  
+  try {
+    await axios.delete(`/statistics/saved-filters/${id}`);
+    await loadSavedFilters();
+  } catch (error) {
+    console.error('Ошибка удаления фильтра:', error);
+    alert('Не удалось удалить фильтр');
+  }
 };
 
 onMounted(() => {
@@ -302,7 +307,8 @@ const dateFields = [
   { label: 'Дата оновлення', value: 'updated_at' },
   { label: 'Дата відправки', value: 'sent_at' },
   { label: 'Дата оплати', value: 'payment_date' },
-  { label: 'Дата доставки', value: 'delivery_date' }
+  { label: 'Дата доставки', value: 'delivery_date' },
+  { label: 'Дата переказу грошей від Inpost', value: 'inpost_payment_date' },
 ]
 
 const fields = [
@@ -330,6 +336,7 @@ const fields = [
   { label: "UTM Campaign", value: "utm_campaign", type: "string" },
   { label: "Дата доставки", value: "delivery_date", type: "date" },
   { label: "Дата відправки", value: "sent_at", type: "date" },
+  { label: "Дата переказу грошей від Inpost", value: "inpost_payment_date", type: "date" },
   { label: "Дата оплати", value: "payment_date", type: "date" },
   { label: "Трекінг номер", value: "tracking_number", type: "string" },
   { label: "Оплачено", value: "is_paid", type: "boolean" },
@@ -714,19 +721,23 @@ const getTooltipText = (items) => {
               <button @click="saveCurrentFilter" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">💾
                 Зберегти</button>
             </div>
+
+
             <div v-if="savedFilters.length" class="space-y-2">
-              <div class="font-semibold text-gray-700">📂 Збережені фільтри (Поки локально в браузері):</div>
+              <div class="font-semibold text-gray-700">📂 Збережені фільтри:</div>
               <div class="flex flex-wrap gap-2">
-                <div v-for="(f, index) in savedFilters" :key="index"
+                <div v-for="f in savedFilters" :key="f.id"
                   class="flex items-center gap-2 border border-gray-300 px-3 py-1 rounded cursor-pointer hover:bg-gray-100 transition"
-                  @click="applySavedFilter(f.data)">
+                  @click="applySavedFilter(f)">
                   <span class="text-sm font-medium">{{ f.name }}</span>
-                  <button @click.stop="deleteFilter(index)" class="text-red-500 hover:text-red-700">
+                  <button @click.stop="deleteFilter(f.id)" class="text-red-500 hover:text-red-700">
                     <Trash class="w-4 h-4" />
                   </button>
                 </div>
               </div>
             </div>
+
+
           </div>
           <div class="mt-5">
             <Fieldset legend="JSON дебаг:" :toggleable="true" :collapsed="true">
@@ -922,6 +933,9 @@ const getTooltipText = (items) => {
         </Column>
         <Column header="Відправлено">
           <template #body="{ data }">{{ formatLocalDate(data.sent_at) }}</template>
+        </Column>
+        <Column header="Дата переказу грошей від Inpost">
+          <template #body="{ data }">{{ formatLocalDate(data.inpost_payment_date) }}</template>
         </Column>
         <Column field="tracking_number" header="Трекинг" />
         <Column field="group.name" header="Група" />

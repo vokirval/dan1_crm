@@ -37,6 +37,7 @@ const filters = ref({
   tracking_number: "",
   delivery_date: null,
   sent_at: null,
+  inpost_payment_date: null,
   group_id: null,
   ip: "",
   website_referrer: "",
@@ -114,6 +115,7 @@ const loadOrders = () => {
   delete activeFilters.created_at;
   delete activeFilters.updated_at;
   delete activeFilters.sent_at;
+  delete activeFilters.inpost_payment_date;
   delete activeFilters.delivery_date;
 
   // Если даты выбраны, форматируем их в Y-m-d
@@ -130,6 +132,11 @@ const loadOrders = () => {
   if (filters.value.sent_at?.length === 2) {
     activeFilters.sent_at_from = formatDateForApi(filters.value.sent_at[0]);
     activeFilters.sent_at_to = formatDateForApi(filters.value.sent_at[1]);
+  }
+
+  if (filters.value.inpost_payment_date?.length === 2) {
+    activeFilters.inpost_payment_date_from = formatDateForApi(filters.value.inpost_payment_date[0]);
+    activeFilters.inpost_payment_date_to = formatDateForApi(filters.value.inpost_payment_date[1]);
   }
 
   if (filters.value.delivery_date?.length === 2) {
@@ -215,6 +222,7 @@ onMounted(() => {
     utm_term: inertiaProps.filters.utm_term || "",
     delivery_date: inertiaProps.filters.delivery_date || "",
     sent_at: inertiaProps.filters.sent_at || "",
+    inpost_payment_date: inertiaProps.filters.inpost_payment_date || "",
 
   };
 
@@ -562,6 +570,7 @@ const copyOrderDetails = async () => {
     text += `Зворотна ТТН: ${selectedOrder.value.return_tracking_number || '-'}\n`;
     text += `Статус замовлення: ${selectedOrder.value.status?.name || '-'}\n`;
     text += `Статус Inpost: ${selectedOrder.value.inpost_status || '-'}\n`;
+    text += `Дата переказу грошей від Inpost: ${formatDateTime(selectedOrder.value.inpost_payment_date) || '-'}\n`;
     text += `Відправлено: ${formatDateTime(selectedOrder.value.sent_at || '-')}\n`;
     text += `Дата отримання: ${formatDateTime(selectedOrder.value.delivery_date) || '-'}\n`;
     text += `Група: ${selectedOrder.value.group?.name || '-'}\n`;
@@ -865,6 +874,15 @@ const copyOrderDetails = async () => {
             placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
         </template>
       </Column>
+      <Column :showFilterMenu="false" header="Дата переказу грошей від Inpost" sortField="inpost_payment_date" sortable>
+        <template #body="{ data }">
+          {{ formatDateTime(data.inpost_payment_date) }}
+        </template>
+        <template #filter>
+          <DatePicker v-model="filters.inpost_payment_date" selectionMode="range" showButtonBar :manualInput="false"
+            placeholder="Виберіть діапазон" size="small" showIcon iconDisplay="input" />
+        </template>
+      </Column>
       <Column :showFilterMenu="false" field="tracking_number" header="Трекинг" sortable>
         <template #filter>
           <InputText type="search" v-model="filters.tracking_number" placeholder="Трекинг" class="w-full" size="small" />
@@ -986,6 +1004,7 @@ const copyOrderDetails = async () => {
                 </p>
                 <p><strong>Відповідальний:</strong> {{ selectedOrder.responsible_user?.name || '-' }}</p>
                 <p><strong>Відправлено:</strong> {{ formatDateTime(selectedOrder.sent_at) }}</p>
+                <p><strong>Дата переказу грошей від Inpost:</strong> {{ formatDateTime(selectedOrder.inpost_payment_date) }}</p>
                 <p><strong>Дата отримання:</strong> {{ formatDateTime(selectedOrder.delivery_date) }}</p>
                 <p><strong>Група:</strong> {{ selectedOrder.group?.name || '-' }}</p>
             </div>
