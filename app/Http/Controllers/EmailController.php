@@ -219,6 +219,26 @@ class EmailController extends Controller
         ]);
     }
 
+    public function getTemplate(Request $request, $orderId)
+    {
+        $request->validate([
+            'template_id' => 'required|exists:email_templates,id',
+        ]);
+
+        $template = EmailTemplate::findOrFail($request->input('template_id'));
+
+        // Замена шорткодов в шаблоне
+        $body = $template->body;
+        $subject = $template->subject;
+        
+
+        return response()->json([
+            'success' => true,
+            'preview' => $body,
+            'subject' => $subject,
+        ]);
+    }
+
     public function getMacrosList()
     {
         // Пример описаний макросов

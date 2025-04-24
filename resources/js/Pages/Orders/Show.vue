@@ -30,7 +30,6 @@ const duplicateOrders = ref(props.duplicateOrders);
 const order = ref(props.order);
 const products = ref(props.products);
 const selectedProduct = ref(null);
-const customSendEmailTemplate = ref(false);
 const selectedVariation = ref(null);
 const dialogVisible = ref(false);
 const emailTemplates = ref(props.emailTemplates || []); // Список шаблонов email
@@ -61,12 +60,6 @@ const lockOrder = async (orderId) => {
 
 lockOrder(order.value.id);
 
-watch(customSendEmailTemplate, (newValue) => {
-    if (newValue) {
-        fetchMacros();
-        selectedTemplateId.value = null;
-    }
-});
 
 const setTotalAmountToPaidInput = () => {
     form.value.paid_amount = totalAmount(order.value.items);
@@ -111,7 +104,7 @@ const insertMacro = (macro) => {
     });
 };
 
-const previewTemplate = async () => {
+const getTemplate = async () => {
     if (!selectedTemplateId.value) {
         toast.add({
             severity: "warn",
@@ -124,7 +117,7 @@ const previewTemplate = async () => {
 
     try {
         const response = await axios.post(
-            `/orders/${order.value.id}/preview-template`,
+            `/orders/${order.value.id}/get-template`,
             {
                 template_id: selectedTemplateId.value,
             }
@@ -132,6 +125,8 @@ const previewTemplate = async () => {
 
         if (response.data.success) {
             previewHtml.value = response.data.preview; // HTML для отображения предпросмотра
+            customBody.value = response.data.preview;
+            customSubject.value = response.data.subject;
             previewDialogVisible.value = true; // Открываем модальное окно
         } else {
             throw new Error("Ошибка получения предпросмотра.");
@@ -148,8 +143,8 @@ const previewTemplate = async () => {
 
 const sendEmail = async () => {
     if (
-        !selectedTemplateId.value &&
-        (!customSubject.value || !customBody.value)
+        
+        !customSubject.value || !customBody.value
     ) {
         toast.add({
             severity: "warn",
@@ -165,7 +160,7 @@ const sendEmail = async () => {
         const response = await axios.post(
             `/orders/${order.value.id}/send-email`,
             {
-                template_id: selectedTemplateId.value,
+                template_id: null,
                 custom_subject: customSubject.value,
                 custom_body: customBody.value,
             }
@@ -1330,7 +1325,7 @@ const copyToClipboard = async (caption) => {
                         </Button>
                     </div>
                     <div class="w-1/12">
-                        <Button size="large" @click="emailDialogVisible = true" class="w-full">
+                        <Button size="large" @click="fetchMacros(); emailDialogVisible = true" class="w-full">
                             <MailPlus class="w-6 h-6" />
                         </Button>
                     </div>
@@ -1348,7 +1343,18 @@ const copyToClipboard = async (caption) => {
                             }"></InputGroupAddon>
                             <IftaLabel>
                                 <Select v-model="form.order_status_id" optionValue="id" :options="statuses"
-                                    optionLabel="name" placeholder="Статус Замовлення" class="w-full" />
+                                    optionLabel="name" placeholder="Статус Замовлення" class="w-full">
+                                    
+                                    <template #option="slotProps">
+                                        <div class="w-10 h-6 mr-2" :style="{backgroundColor: `#${slotProps.option.color}`}">
+                                        
+                                        </div>
+                                        <div class="flex items-center">
+                                            <div>{{ slotProps.option.name }}</div>
+                                        </div>
+                                    </template>
+                                   
+                                    </Select>
                                 <label for="product_quantity">Статус Замовлення</label>
                             </IftaLabel>
                         </InputGroup>
@@ -1725,23 +1731,15 @@ const copyToClipboard = async (caption) => {
         <Dialog v-model:visible="emailDialogVisible" header="Відправка Email" modal :style="{ width: '50vw' }"
             :breakpoints="{ '960px': '75vw', '640px': '90vw' }">
             <div class="grid grid-cols-1 gap-4">
-                <ToggleButton v-model="customSendEmailTemplate" onLabel="Вибрати зі списку шаблонів"
-                    offLabel="Створити лист самостійно" />
-
-                <div v-if="customSendEmailTemplate == false">
+       
                     <label for="template">Шаблон листа</label>
-                    <Select id="template" v-model="selectedTemplateId" @change="previewTemplate" :options="emailTemplates.map((template) => ({
+                    <Select id="template" v-model="selectedTemplateId" @change="getTemplate" :options="emailTemplates.map((template) => ({
                         label: template.name,
                         value: template.id,
                     }))
                         " optionValue="value" optionLabel="label" placeholder="Оберіть шаблон" class="w-full" />
 
-                    <div v-if="selectedTemplateId">
-                        <h3 class="mt-5">Превью шаблона:</h3>
-                        <div class="p-3 border border-[#000]" v-html="previewHtml"></div>
-                    </div>
-                </div>
-                <div v-else>
+      
                     <div class="mb-6">
                         <h3 class="text-lg font-bold mb-3">Доступні макроси</h3>
                         <ul class="space-y-1 flex gap-3 w-full flex-wrap">
@@ -1761,7 +1759,7 @@ const copyToClipboard = async (caption) => {
                         <Textarea id="custom-body" ref="customBodyTextarea" v-model="customBody" rows="5"
                             class="w-full" />
                     </div>
-                </div>
+                
             </div>
             <template #footer>
                 <Button class="p-button-success" @click="sendEmail">

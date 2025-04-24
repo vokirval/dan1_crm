@@ -201,6 +201,7 @@ Route::middleware(['auth'])->group(function() {
     
     Route::post('/orders/{order}/send-email', [EmailController::class, 'sendEmail'])->name('orders.send-email');
     Route::post('/orders/{order}/preview-template', [EmailController::class, 'previewTemplate'])->name('orders.preview-email');
+    Route::post('/orders/{order}/get-template', [EmailController::class, 'getTemplate'])->name('orders.get-template-email');
     Route::get('/email/macros', [EmailController::class, 'getMacrosList'])->name('email.get-macros');
 
     Route::post('/orders/mass-delete', [OrdersController::class, 'massDelete'])->name('orders.massDelete');

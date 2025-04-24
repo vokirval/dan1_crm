@@ -825,8 +825,7 @@ const getTooltipText = (items) => {
               </Column>
             </DataTable>
           </div>
-
-          <div class="w-1/3" v-if="stats.status_stats">
+          <div class="w-1/3" v-if="stats.status_stats && stats.status_stats[0].count">
             <h2 class="text-xl font-bold">📉 Статистика по статусах</h2>
             <div class="bg-white border border-gray-200 p-4 mt-6">
               <div class="space-y-2">
@@ -853,6 +852,10 @@ const getTooltipText = (items) => {
                 </div>
               </div>
             </div>
+          </div>
+          <div v-else class="w-1/3">
+            <h2 class="text-xl font-bold">Немає даних для відображення</h2>
+            
           </div>
 
 

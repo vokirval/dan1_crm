@@ -160,6 +160,7 @@ class OrdersController extends Controller
                 'items.productVariation:id,product_id',
                 'items.productVariation.product:name,id',
                 'items.productVariation.attributes:product_variation_id,attribute_name,attribute_value'])
+                ->withCount(['emailHistory'])
             ->paginate($perPage)
             ->appends($request->only(['per_page', 'sort_by', 'sort_direction']));
 
