@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\Order;
 use App\Models\OrderFulfillment;
 use Illuminate\Support\Facades\Http;
+use App\Services\AutoRuleService;
 
 class OrderObserver
 {
@@ -20,6 +21,11 @@ class OrderObserver
             sleep(10);
             $this->panelExpansion($order);
         });
+
+        if ($order->wasChanged('order_status_id')) {
+            $service = new AutoRuleService();
+            $service->processRulesForOrder($order);
+        }
         
        
     }

@@ -1,0 +1,139 @@
+<script setup>
+import Layout from '../../Layout/App.vue';
+import { ref, reactive, watch } from 'vue';
+import { useForm, Head, router } from '@inertiajs/vue3';
+import { useToast } from 'primevue/usetoast';
+import { Trash } from 'lucide-vue-next';
+import Select from 'primevue/dropdown';
+import MultiSelect from 'primevue/multiselect';
+import InputText from 'primevue/inputtext';
+import Button from 'primevue/button';
+
+const toast = useToast();
+
+const props = defineProps({
+    orderStatus: Object,
+    availableFields: Array,
+    availableOperators: Object,
+    availableActions: Array,
+});
+
+const form = useForm({
+    name: '',
+    is_active: true,
+    conditions: [],
+    actions: [],
+});
+
+const addCondition = () => {
+    form.conditions.push({ field: null, operator: null, value: null });
+};
+
+const removeCondition = (index) => {
+    form.conditions.splice(index, 1);
+};
+
+const addAction = () => {
+    form.actions.push({ type: 'log', parameters: { message: '' } });
+};
+
+const removeAction = (index) => {
+    form.actions.splice(index, 1);
+};
+
+const getOperators = (type) => props.availableOperators[type] || [];
+const getField = (key) => props.availableFields.find((f) => f.value === key);
+const getType = (field) => getField(field)?.type;
+const getOptions = (field) => getField(field)?.options || [];
+
+const submit = () => {
+    router.post(`/order-statuses/${props.orderStatus.id}/auto-rules`, form.data(), {
+        onSuccess: (page) => {
+            toast.add({
+                severity: 'success',
+                summary: 'Успішно!',
+                detail: page.props.flash?.success || 'Автоправило створено',
+                life: 3000,
+            });
+        },
+        onError: (errors) => {
+            const errorMessages = Object.values(errors).flat().join("\n");
+            toast.add({
+                severity: 'error',
+                summary: 'Помилка',
+                detail: errorMessages,
+                life: 5000,
+            });
+        },
+    });
+};
+
+watch(form.conditions, () => {
+    form.conditions.forEach((rule) => {
+        if (rule._prevOperator !== rule.operator) {
+            if (['входить в', 'не входить в'].includes(rule.operator)) {
+                rule.value = [];
+            } else if (rule.operator === 'дорівнює' && getType(rule.field) === 'boolean') {
+                rule.value = '1'; // По умолчанию true для boolean
+            } else {
+                rule.value = '';
+            }
+            rule._prevOperator = rule.operator;
+        }
+    });
+}, { deep: true });
+</script>
+
+<template>
+    <Head :title="'Створити автоправило для ' + orderStatus.name" />
+    <Layout>
+        <div class="p-6 space-y-6">
+            <h1 class="text-2xl font-bold">Створити автоправило для статусу: {{ orderStatus.name }}</h1>
+            <form @submit.prevent="submit" class="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
+                <div class="mb-4">
+                    <label class="block font-semibold">Назва</label>
+                    <InputText v-model="form.name" class="w-full border rounded px-2 py-1" required />
+                </div>
+                <div class="mb-4">
+                    <label class="block font-semibold">Активно</label>
+                    <input v-model="form.is_active" type="checkbox" class="border rounded" />
+                </div>
+
+                <h2 class="text-lg font-bold mb-3">Умови</h2>
+                <div v-for="(condition, index) in form.conditions" :key="index" class="flex items-center gap-3 mb-3 bg-white p-3 rounded-md shadow-sm border border-gray-200">
+                    <Select v-model="condition.field" :options="availableFields" optionLabel="label" optionValue="value" placeholder="Оберіть поле" class="w-60" />
+                    <Select v-model="condition.operator" :options="getOperators(getType(condition.field))" placeholder="Оператор" class="w-48" />
+                    <!-- Строковые поля -->
+                    <InputText v-if="getType(condition.field) === 'string' && !['входить в', 'не входить в'].includes(condition.operator)" v-model="condition.value" class="w-60 border rounded px-2 py-1" placeholder="Значення" />
+                    <!-- Числовые поля -->
+                    <InputText v-if="getType(condition.field) === 'number'" v-model="condition.value" type="number" class="w-60 border rounded px-2 py-1" placeholder="Число" />
+                    <!-- Поля выбора -->
+                    <Select v-if="getType(condition.field) === 'select' && !['входить в', 'не входить в'].includes(condition.operator)" v-model="condition.value" :options="getOptions(condition.field)" optionLabel="name" optionValue="id" class="w-60" />
+                    <MultiSelect v-if="getType(condition.field) === 'select' && ['входить в', 'не входить в'].includes(condition.operator)" v-model="condition.value" :options="getOptions(condition.field)" optionLabel="name" optionValue="id" class="w-60" placeholder="Оберіть значення" />
+                    <!-- Поля даты -->
+                    <InputText v-if="getType(condition.field) === 'date' && !['є значення', 'немає значення'].includes(condition.operator)" v-model="condition.value" type="date" class="w-60 border rounded px-2 py-1" placeholder="Дата" />
+                    <!-- Булевы поля -->
+                    <Select v-if="getType(condition.field) === 'boolean'" v-model="condition.value" :options="[{ label: 'Так', value: '1' }, { label: 'Ні', value: '0' }]" optionLabel="label" optionValue="value" class="w-60" />
+                    <button type="button" @click="removeCondition(index)" class="text-red-500 hover:text-red-700">
+                        <Trash class="w-5 h-5" />
+                    </button>
+                </div>
+                <Button type="button" @click="addCondition" label="+ Додати умову" variant="link" />
+
+                <h2 class="text-lg font-bold mb-3 mt-6">Дії</h2>
+                <div v-for="(action, index) in form.actions" :key="index" class="flex items-center gap-3 mb-3 bg-white p-3 rounded-md shadow-sm border border-gray-200">
+                    <Select v-model="action.type" :options="availableActions" optionLabel="label" optionValue="value" placeholder="Тип дії" class="w-60" />
+                    <InputText v-model="action.parameters.message" class="w-60 border rounded px-2 py-1" placeholder="Повідомлення для логу" />
+                    <button type="button" @click="removeAction(index)" class="text-red-500 hover:text-red-700">
+                        <Trash class="w-5 h-5" />
+                    </button>
+                </div>
+                <Button type="button" @click="addAction" label="+ Додати дію" variant="link" />
+
+                <div class="mt-6">
+                    <Button type="submit" label="Зберегти" :disabled="form.processing" />
+                </div>
+            </form>
+        </div>
+    </Layout>
+</template>

@@ -14,4 +14,9 @@ class OrderStatus extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    public function autoRules()
+    {
+        return $this->hasMany(AutoRule::class, 'order_status_id');
+    }
 }

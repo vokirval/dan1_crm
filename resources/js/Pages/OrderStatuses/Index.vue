@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import Layout from "../../Layout/App.vue";
-import { usePage, Head, router } from "@inertiajs/vue3";
+import { usePage, Head, router, Link } from "@inertiajs/vue3";
 import { Button, Dialog, InputText } from "primevue";
 import { Settings, Trash } from "lucide-vue-next";
 import { useToast } from "primevue/usetoast";
@@ -179,6 +179,7 @@ const confirmDelete = (event, data) => {
             <Column class="w-[40px]">
                 <template #body="{ data }">
                     <div class="flex gap-3">
+                        <Link :href="`/order-statuses/${data.id}/auto-rules`" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Автоправила</Link>
                         <Button severity="secondary" @click="openModal(data)">
                             <Settings class="w-4 h-4" />
                         </Button>
@@ -188,6 +189,7 @@ const confirmDelete = (event, data) => {
                         >
                             <Trash class="w-4 h-4" />
                         </Button>
+                        
                     </div>
                 </template>
             </Column>

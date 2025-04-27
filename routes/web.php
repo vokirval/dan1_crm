@@ -9,12 +9,12 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\EmailController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\OrdersController;
+use App\Http\Controllers\AutoRuleController;
 use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderLockController;
 use App\Http\Controllers\StatisticController;
 use App\Http\Controllers\PermissionController;
-use App\Http\Controllers\OrderStatusController;
 
 //php artisan migrate
 //php artisan db:seed --class=DatabaseSeeder
@@ -30,10 +30,11 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/signup', [AuthController::class, 'signup'])->name('signup');
 Route::post('/signup', [AuthController::class, 'storeSignup'])->name('store-signup');
 
+use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\SavedFilterController;
 use App\Http\Controllers\EmailTemplateController;
-use App\Http\Controllers\PaymentMethodController;
 
+use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\DeliveryMethodController;
 use App\Http\Controllers\ProductsCategoryController;
 
@@ -61,6 +62,8 @@ Route::middleware(['auth'])->group(function() {
     Route::post('/orders/{order}/unlock', [OrderLockController::class, 'unlock']);
     Route::post('/orders/{order}/heartbeat', [OrderLockController::class, 'heartbeat']);
     Route::get('/orders/locked', [OrderLockController::class, 'getLockedOrders']);
+
+    
 
     
     Route::get('/dashboard', [DashboardController::class, 'index']);
@@ -121,6 +124,17 @@ Route::middleware(['auth'])->group(function() {
         Route::post('/', [OrderStatusController::class, 'store'])->name('order-statuses.store')->middleware('permission:Створення статусів замовлень');
         Route::put('/{id}', [OrderStatusController::class, 'update'])->name('order-statuses.update')->middleware('permission:Редагування статусів замовлень');
         Route::delete('/{id}', [OrderStatusController::class, 'destroy'])->name('order-statuses.destroy')->middleware('permission:Видалення статусів замовлень');
+       
+    
+    });
+
+    Route::prefix('order-statuses/{orderStatus}')->group(function () {
+        Route::get('auto-rules', [AutoRuleController::class, 'index'])->name('auto-rules.index');
+        Route::get('auto-rules/create', [AutoRuleController::class, 'create'])->name('auto-rules.create');
+        Route::post('auto-rules', [AutoRuleController::class, 'store'])->name('auto-rules.store');
+        Route::get('auto-rules/{rule}/edit', [AutoRuleController::class, 'edit'])->name('auto-rules.edit');
+        Route::put('auto-rules/{rule}', [AutoRuleController::class, 'update'])->name('auto-rules.update');
+        Route::delete('auto-rules/{rule}', [AutoRuleController::class, 'destroy'])->name('auto-rules.destroy');
     });
 
     Route::prefix('/payment-methods')->group(function () {
