@@ -132,7 +132,23 @@ watch(form.conditions, () => {
                 <h2 class="text-lg font-bold mb-3 mt-6">Дії</h2>
                 <div v-for="(action, index) in form.actions" :key="index" class="flex items-center gap-3 mb-3 bg-white p-3 rounded-md shadow-sm border border-gray-200">
                     <Select v-model="action.type" :options="availableActions" optionLabel="label" optionValue="value" placeholder="Тип дії" class="w-60" />
-                    <InputText v-model="action.parameters.message" class="w-60 border rounded px-2 py-1" placeholder="Повідомлення для логу" />
+                    <div v-if="action.type === 'log'" class="flex-1">
+                        <InputText v-model="action.parameters.message" class="w-full border rounded px-2 py-1" placeholder="Повідомлення для логу" />
+                    </div>
+                    <div v-if="action.type === 'send_email'" class="flex-1 space-y-2">
+                        <div>
+                            <label class="block text-sm">Email отримувача</label>
+                            <InputText v-model="action.parameters.recipient" class="w-full border rounded px-2 py-1" placeholder="Email отримувача" />
+                        </div>
+                        <div>
+                            <label class="block text-sm">Тема листа</label>
+                            <InputText v-model="action.parameters.subject" class="w-full border rounded px-2 py-1" placeholder="Тема листа" />
+                        </div>
+                        <div>
+                            <label class="block text-sm">Текст листа</label>
+                            <Textarea v-model="action.parameters.body" class="w-full border rounded px-2 py-1" placeholder="Текст листа" rows="4" />
+                        </div>
+                    </div>
                     <button type="button" @click="removeAction(index)" class="text-red-500 hover:text-red-700">
                         <Trash class="w-5 h-5" />
                     </button>

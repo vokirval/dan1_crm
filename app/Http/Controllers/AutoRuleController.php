@@ -145,6 +145,11 @@ class AutoRuleController extends Controller
     {
         return [
             ['label' => 'Лог', 'value' => 'log'],
+            //['label' => 'Зміна статусу', 'value' => 'change_status'],
+            ['label' => 'Відправка Email', 'value' => 'send_email'],
+            //['label' => 'Відправка SMS', 'value' => 'send_sms'],
+            //['label' => 'Виконати скрипт', 'value' => 'execute_script'],
+            //['label' => 'Зміна поля', 'value' => 'change_field'],
         ];
     }
     public function edit(OrderStatus $orderStatus, AutoRule $rule)

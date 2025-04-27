@@ -8,6 +8,7 @@ use App\Models\Order;
 
 class AutoRuleService
 {
+
     public function processRulesForOrder(Order $order)
     {
        
@@ -131,17 +132,52 @@ class AutoRuleService
     }
 
     protected function executeActions(AutoRule $rule, Order $order)
-    {
-        foreach ($rule->actions as $action) {
-            switch ($action->type) {
-                case 'log':
+{
+    foreach ($rule->actions as $action) {
+        switch ($action->type) {
+            case 'log':
+                Logs::create([
+                    'auto_rule_id' => $rule->id,
+                    'order_id' => $order->id,
+                    'message' => $action->parameters['message'] ?? "Автоправило {$rule->name} успішно виконано для замовлення {$order->id}",
+                ]);
+                break;
+            case 'send_email':
+                $recipient = $action->parameters['recipient'] ?? $order->email;
+                $subject = $action->parameters['subject'] ?? 'Повідомлення щодо замовлення';
+                $body = $action->parameters['body'] ?? "Ваше замовлення #{$order->id} оброблено.";
+
+                if ($recipient && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+                    try {
+                        \Illuminate\Support\Facades\Mail::raw($body, function ($message) use ($recipient, $subject) {
+                            $message->to($recipient)
+                                    ->subject($subject)
+                                    ->from(config('mail.from.address'), config('mail.from.name'));
+                        });
+                        // Логируем успешную отправку
+                        Logs::create([
+                            'auto_rule_id' => $rule->id,
+                            'order_id' => $order->id,
+                            'message' => "Email відправлено на {$recipient} з темою: {$subject}",
+                        ]);
+                    } catch (\Exception $e) {
+                        // Логируем ошибку
+                        Logs::create([
+                            'auto_rule_id' => $rule->id,
+                            'order_id' => $order->id,
+                            'message' => "Помилка відправки email на {$recipient}: {$e->getMessage()}",
+                        ]);
+                    }
+                } else {
+                    // Логируем ошибку, если email невалидный
                     Logs::create([
                         'auto_rule_id' => $rule->id,
                         'order_id' => $order->id,
-                        'message' => $action->parameters['message'] ?? "Автоправило {$rule->name} успішно виконано для замовлення {$order->id}",
+                        'message' => "Невалідний email для відправки: {$recipient}",
                     ]);
-                    break;
-            }
+                }
+                break;
         }
     }
+}
 }
