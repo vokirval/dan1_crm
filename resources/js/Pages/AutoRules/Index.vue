@@ -27,7 +27,7 @@ const confirmDelete = (event, data) => {
             label: "Так",
         },
         accept: () => {
-            router.delete(`/order-statuses/${props.orderStatus.id}/auto-rules/${data.id}`, {
+            router.delete(`/auto-rules/${data.id}`, {
                 onSuccess: () => {
                     rules.value = page.props.rules;
                     toast.add({
@@ -87,8 +87,7 @@ const confirmDelete = (event, data) => {
                             <td class="border border-gray-200 p-2">{{ rule.name }}</td>
                             <td class="border border-gray-200 p-2">{{ rule.is_active ? 'Так' : 'Ні' }}</td>
                             <td class="border border-gray-200 p-2">
-
-                                <Link :href="`/order-statuses/${orderStatus.id}/auto-rules/${rule.id}/edit`" class="p-button p-component p-button-secondary mr-2">
+                                <Link :href="`/auto-rules/${rule.id}/edit`" class="p-button p-component p-button-secondary mr-2">
                                 <Settings class="w-4 h-4" />
                             </Link>
                         

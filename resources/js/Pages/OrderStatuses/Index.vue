@@ -167,7 +167,7 @@ const confirmDeleteAutoRule = (event, status, data) => {
             label: "Так",
         },
         accept: () => {
-            router.delete(`/order-statuses/${status}/auto-rules/${data.id}`, {
+            router.delete(`/auto-rules/${data.id}`, {
                 onSuccess: () => {
                     isModalVisibleAutoRule.value = false;
                     items.value = page.props.data;
@@ -290,7 +290,7 @@ const confirmDeleteAutoRule = (event, status, data) => {
                         <td class="border border-gray-200 p-2">{{ rule.name }}</td>
                         <td class="border border-gray-200 p-2">{{ rule.is_active ? 'Так' : 'Ні' }}</td>
                         <td class="border border-gray-200 p-2">
-                            <Link :href="`/order-statuses/${itemForm.id}/auto-rules/${rule.id}/edit`" class="p-button p-component p-button-secondary mr-2">
+                            <Link :href="`/auto-rules/${rule.id}/edit`" class="p-button p-component p-button-secondary mr-2">
                                 <Settings class="w-4 h-4" />
                             </Link>
                         

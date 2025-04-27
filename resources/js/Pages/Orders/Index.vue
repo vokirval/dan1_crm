@@ -754,7 +754,7 @@ const copyOrderDetails = async () => {
           <InputText type="search" v-model="filters.email" placeholder="Email" class="w-full" size="small" /> 
         </template>
         <template #body="{ data }">
-          <Badge size="small">{{data.email_history_count}}</Badge> {{ data.email }} 
+          <Badge severity="secondary" size="small">{{data.email_history_count}}</Badge> {{ data.email }} 
         </template>
       </Column>
       <Column :showFilterMenu="false" field="comment" header="Коментар" bodyClass="cursor-help" sortField="comment" :sortable="true"

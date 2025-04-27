@@ -84,7 +84,6 @@ class AutoRuleController extends Controller
     {
         return [
             ['label' => 'ID замовлення', 'value' => 'id', 'type' => 'number'],
-            ['label' => 'Статус замовлення', 'value' => 'order_status_id', 'type' => 'select', 'options' => OrderStatus::all()->map(fn($s) => ['id' => $s->id, 'name' => $s->name])],
             ['label' => 'Метод оплати', 'value' => 'payment_method_id', 'type' => 'select', 'options' => PaymentMethod::all()->map(fn($p) => ['id' => $p->id, 'name' => $p->name])],
             ['label' => 'Метод доставки', 'value' => 'delivery_method_id', 'type' => 'select', 'options' => DeliveryMethod::all()->map(fn($d) => ['id' => $d->id, 'name' => $d->name])],
             ['label' => 'Група', 'value' => 'group_id', 'type' => 'select', 'options' => Group::all()->map(fn($g) => ['id' => $g->id, 'name' => $g->name])],
@@ -135,10 +134,10 @@ class AutoRuleController extends Controller
     protected function getOperators()
     {
         return [
-            'string' => ['містить', 'не містить', 'дорівнює', 'не дорівнює', 'є значення', 'немає значення'],
+            'string' => ['містить', 'не містить', 'дорівнює', 'не дорівнює'],
             'number' => ['=', '!=', '<', '<=', '>', '>='],
             'select' => ['дорівнює', 'не дорівнює', 'входить в', 'не входить в'],
-            'date' => ['=', '!=', '<', '<=', '>', '>=', 'є значення', 'немає значення'],
+            'date' => ['=', '!=', '<', '<=', '>', '>='],
             'boolean' => ['дорівнює', 'не дорівнює'],
         ];
     }
@@ -146,7 +145,6 @@ class AutoRuleController extends Controller
     {
         return [
             ['label' => 'Лог', 'value' => 'log'],
-            // Додайте інші дії тут
         ];
     }
     public function edit(OrderStatus $orderStatus, AutoRule $rule)
@@ -200,7 +198,7 @@ class AutoRuleController extends Controller
             ]);
         }
 
-        return redirect()->route('auto-rules.index', $orderStatus);
+        return back()->with('success', 'Автоправило успішно збережено.');
         
     }
     public function destroy(OrderStatus $orderStatus, AutoRule $rule)

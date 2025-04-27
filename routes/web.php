@@ -4,6 +4,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LogsController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EmailController;
@@ -14,7 +15,6 @@ use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderLockController;
 use App\Http\Controllers\StatisticController;
-use App\Http\Controllers\PermissionController;
 
 //php artisan migrate
 //php artisan db:seed --class=DatabaseSeeder
@@ -30,10 +30,11 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/signup', [AuthController::class, 'signup'])->name('signup');
 Route::post('/signup', [AuthController::class, 'storeSignup'])->name('store-signup');
 
+use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\SavedFilterController;
-use App\Http\Controllers\EmailTemplateController;
 
+use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\DeliveryMethodController;
 use App\Http\Controllers\ProductsCategoryController;
@@ -70,9 +71,12 @@ Route::middleware(['auth'])->group(function() {
     Route::get('/statistics', [StatisticController::class, 'index']);
     Route::post('/statistics/filter', [StatisticController::class, 'filter']);
 
+
     Route::get('statistics/saved-filters', [SavedFilterController::class, 'index']);
     Route::post('statistics/saved-filters', [SavedFilterController::class, 'store']);
     Route::delete('statistics/saved-filters/{savedFilter}', [SavedFilterController::class, 'destroy']);
+
+    Route::get('/logs', [LogsController::class, 'index'])->name('logs.index');
     
 
     Route::prefix('/products')->group(function(){
@@ -132,10 +136,10 @@ Route::middleware(['auth'])->group(function() {
         Route::get('auto-rules', [AutoRuleController::class, 'index'])->name('auto-rules.index');
         Route::get('auto-rules/create', [AutoRuleController::class, 'create'])->name('auto-rules.create');
         Route::post('auto-rules', [AutoRuleController::class, 'store'])->name('auto-rules.store');
-        Route::get('auto-rules/{rule}/edit', [AutoRuleController::class, 'edit'])->name('auto-rules.edit');
-        Route::put('auto-rules/{rule}', [AutoRuleController::class, 'update'])->name('auto-rules.update');
-        Route::delete('auto-rules/{rule}', [AutoRuleController::class, 'destroy'])->name('auto-rules.destroy');
     });
+    Route::get('auto-rules/{rule}/edit', [AutoRuleController::class, 'edit'])->name('auto-rules.edit');
+    Route::put('auto-rules/{rule}', [AutoRuleController::class, 'update'])->name('auto-rules.update');
+    Route::delete('auto-rules/{rule}', [AutoRuleController::class, 'destroy'])->name('auto-rules.destroy');
 
     Route::prefix('/payment-methods')->group(function () {
         Route::get('/', [PaymentMethodController::class, 'index'])->name('payment-methods.index')->middleware('permission:Перегляд методів оплат');

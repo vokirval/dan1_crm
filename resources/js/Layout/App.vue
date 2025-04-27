@@ -43,6 +43,8 @@ const menuItems = ref([
             { label: "Статуси замовлень", route: "/order-statuses" },
             { label: "Методи оплати", route: "/payment-methods" },
             { label: "Методи доставки", route: "/delivery-methods" },
+            { label: "Логи", route: "/logs" },
+
         ],
     },
     {

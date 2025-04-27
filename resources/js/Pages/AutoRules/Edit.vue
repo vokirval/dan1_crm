@@ -67,7 +67,7 @@ const submit = () => {
             value: Array.isArray(condition.value) ? JSON.stringify(condition.value) : condition.value,
         })),
     };
-    router.put(`/order-statuses/${props.orderStatus.id}/auto-rules/${props.rule.id}`, data, {
+    router.put(`/auto-rules/${props.rule.id}`, data, {
         onSuccess: (page) => {
             toast.add({
                 severity: 'success',
