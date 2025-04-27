@@ -138,7 +138,7 @@ class AutoRuleService
                     Logs::create([
                         'auto_rule_id' => $rule->id,
                         'order_id' => $order->id,
-                        'message' => $action->parameters['message'] ?? "Rule {$rule->name} executed for order {$order->id}",
+                        'message' => $action->parameters['message'] ?? "Автоправило {$rule->name} успішно виконано для замовлення {$order->id}",
                     ]);
                     break;
             }

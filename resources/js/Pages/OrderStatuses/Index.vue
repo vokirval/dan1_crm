@@ -3,7 +3,7 @@ import { ref, computed } from "vue";
 import Layout from "../../Layout/App.vue";
 import { usePage, Head, router, Link } from "@inertiajs/vue3";
 import { Button, Dialog, InputText } from "primevue";
-import { Settings, Trash } from "lucide-vue-next";
+import { Settings, Trash, Workflow } from "lucide-vue-next";
 import { useToast } from "primevue/usetoast";
 import { useConfirm } from "primevue/useconfirm";
 
@@ -62,6 +62,9 @@ const onSortChange = (event) => {
 };
 
 const isModalVisible = ref(false);
+const isModalVisibleAutoRule = ref(false);
+
+
 
 const openModal = (item = null) => {
     if (item) {
@@ -71,6 +74,17 @@ const openModal = (item = null) => {
     }
     isModalVisible.value = true;
 };
+
+const openModalAutoRule = (item = null) => {
+    if (item) {
+        itemForm.value = { ...item };
+    } else {
+        itemForm.value = { id: null, name: "", color: "" };
+    }
+    isModalVisibleAutoRule.value = true;
+};
+
+
 
 const saveItem = () => {
     const method = itemForm.value.id ? "put" : "post";
@@ -139,6 +153,46 @@ const confirmDelete = (event, data) => {
         },
     });
 };
+
+const confirmDeleteAutoRule = (event, status, data) => {
+    confirm.require({
+        target: event.currentTarget,
+        message: "Ви дійсно хочете видалити?",
+        rejectProps: {
+            label: "Ні",
+            severity: "secondary",
+            outlined: true,
+        },
+        acceptProps: {
+            label: "Так",
+        },
+        accept: () => {
+            router.delete(`/order-statuses/${status}/auto-rules/${data.id}`, {
+                onSuccess: () => {
+                    isModalVisibleAutoRule.value = false;
+                    items.value = page.props.data;
+                    toast.add({
+                        severity: "info",
+                        summary: "Deleted",
+                        detail: page.props.flash.success,
+                        life: 3000,
+                    });
+                },
+                onError: (error) => {
+                    const errorMessages = Object.values(error)
+                        .flat()
+                        .join("\n");
+                    toast.add({
+                        severity: "error",
+                        summary: "Error",
+                        detail: errorMessages,
+                        life: 5000,
+                    });
+                },
+            });
+        },
+    });
+};
 </script>
 <template>
     <Head :title="pageTitle" />
@@ -163,6 +217,16 @@ const confirmDelete = (event, data) => {
         >
             <Column field="id" header="ID" sortable />
             <Column field="name" header="Назва" sortable />
+            <Column class="w-[40px]" header="Автоправила">
+            <template #body="{ data }">
+                <Link :href="`/order-statuses/${data.id}/auto-rules`">
+                <span v-if="data.auto_rules.length > 0" class="text-green-500">
+                    {{data.auto_rules.length}}
+                </span>
+                <span v-else class="text-red-500">0</span>
+                </Link>
+            </template>
+            </Column>
             <Column class="w-[40px]" header="Колір">
             <template #body="{ data }">
                 <span
@@ -179,7 +243,10 @@ const confirmDelete = (event, data) => {
             <Column class="w-[40px]">
                 <template #body="{ data }">
                     <div class="flex gap-3">
-                        <Link :href="`/order-statuses/${data.id}/auto-rules`" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Автоправила</Link>
+                        <Button severity="secondary" @click="openModalAutoRule(data)">
+                            <Workflow class="w-4 h-4" />
+                        </Button>
+                        
                         <Button severity="secondary" @click="openModal(data)">
                             <Settings class="w-4 h-4" />
                         </Button>
@@ -207,5 +274,46 @@ const confirmDelete = (event, data) => {
                 <Button label="Зберегти" @click="saveItem" />
             </template>
         </Dialog>
+
+        <Dialog v-model:visible="isModalVisibleAutoRule" header="Автоправила" :modal="true"  :style="{ width: '70rem' }">
+           
+            <table class="w-full border-collapse border border-gray-200">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="border border-gray-200 p-2">Назва</th>
+                        <th class="border border-gray-200 p-2">Активно</th>
+                        <th class="border border-gray-200 p-2">Дії</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="rule in itemForm.auto_rules" :key="rule.id">
+                        <td class="border border-gray-200 p-2">{{ rule.name }}</td>
+                        <td class="border border-gray-200 p-2">{{ rule.is_active ? 'Так' : 'Ні' }}</td>
+                        <td class="border border-gray-200 p-2">
+                            <Link :href="`/order-statuses/${itemForm.id}/auto-rules/${rule.id}/edit`" class="p-button p-component p-button-secondary mr-2">
+                                <Settings class="w-4 h-4" />
+                            </Link>
+                        
+                            <Button
+                                severity="secondary"
+                                @click="confirmDeleteAutoRule($event, itemForm.id, rule)" 
+                            >
+                                <Trash class="w-4 h-4" />
+                            </Button>
+                        
+                        
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <template #footer>
+                <Button label="Скасувати" severity="secondary" @click="isModalVisibleAutoRule = false" />
+               
+                <Link  :href="`/order-statuses/${itemForm.id}/auto-rules/create`" class="p-button p-component p-button-label">Додати автоправило</Link>
+                
+            </template>
+        </Dialog>
+
+
     </Layout>
 </template>

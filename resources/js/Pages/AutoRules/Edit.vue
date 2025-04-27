@@ -13,16 +13,28 @@ const toast = useToast();
 
 const props = defineProps({
     orderStatus: Object,
+    rule: Object,
     availableFields: Array,
     availableOperators: Object,
     availableActions: Array,
 });
 
+// Инициализируем форму с данными правила
 const form = useForm({
-    name: '',
-    is_active: true,
-    conditions: [],
-    actions: [],
+    name: props.rule.name,
+    is_active: !!props.rule.is_active,
+    conditions: props.rule.conditions.map(condition => ({
+        field: condition.field,
+        operator: condition.operator,
+        value: ['входить в', 'не входить в'].includes(condition.operator)
+            ? JSON.parse(condition.value)
+            : condition.value,
+        _prevOperator: condition.operator, // Для отслеживания изменений оператора
+    })),
+    actions: props.rule.actions.map(action => ({
+        type: action.type,
+        parameters: action.parameters || { message: '' },
+    })),
 });
 
 const addCondition = () => {
@@ -49,17 +61,18 @@ const getOptions = (field) => getField(field)?.options || [];
 const submit = () => {
     const data = {
         ...form.data(),
+        is_active: form.is_active ? 1 : 0, // Преобразуем true/false в 1/0
         conditions: form.conditions.map(condition => ({
             ...condition,
             value: Array.isArray(condition.value) ? JSON.stringify(condition.value) : condition.value,
         })),
     };
-    router.post(`/order-statuses/${props.orderStatus.id}/auto-rules`, data, {
+    router.put(`/order-statuses/${props.orderStatus.id}/auto-rules/${props.rule.id}`, data, {
         onSuccess: (page) => {
             toast.add({
                 severity: 'success',
                 summary: 'Успішно!',
-                detail: page.props.flash?.success || 'Автоправило створено',
+                detail: page.props.flash?.success || 'Автоправило оновлено',
                 life: 3000,
             });
         },
@@ -92,10 +105,16 @@ watch(form.conditions, () => {
 </script>
 
 <template>
-    <Head :title="'Створити автоправило для ' + orderStatus.name" />
+    <Head :title="'Редагувати автоправило для ' + orderStatus.name" />
     <Layout>
         <div class="p-6 space-y-6">
-            <h1 class="text-2xl font-bold">Створити автоправило для статусу: {{ orderStatus.name }}</h1>
+            <div class="flex items-center">
+                    <h1 class="text-2xl font-bold">Редагувати автоправило для статусу: </h1>
+                    <div
+                    class="rounded  p-2 text-white"
+                    :style="{ backgroundColor: `#${orderStatus.color}` }"
+                    > {{ orderStatus.name }}</div>
+                </div>
             <form @submit.prevent="submit" class="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
                 <div class="flex">
                     <div class="mb-4 border-r border-gray-300 pr-4 text-center">

@@ -47,7 +47,7 @@ class AutoRuleController extends Controller
             'conditions' => 'array',
             'conditions.*.field' => 'required|string',
             'conditions.*.operator' => 'required|string',
-            'conditions.*.value' => 'required|string',
+            'conditions.*.value' => 'required', // Убрали |string, чтобы принимать массивы
             'actions' => 'array',
             'actions.*.type' => 'required|string',
             'actions.*.parameters' => 'nullable|array',
@@ -64,7 +64,7 @@ class AutoRuleController extends Controller
                 'auto_rule_id' => $rule->id,
                 'field' => $condition['field'],
                 'operator' => $condition['operator'],
-                'value' => $condition['value'],
+                'value' => is_array($condition['value']) ? json_encode($condition['value']) : $condition['value'],
             ]);
         }
 
@@ -76,7 +76,8 @@ class AutoRuleController extends Controller
             ]);
         }
 
-        return redirect()->route('auto-rules.index', $orderStatus);
+        return redirect()->route('order-statuses.index', $orderStatus)->with('success', 'Автоправило успішно створено.');
+        
     }
 
     protected function getAvailableFields()
@@ -117,10 +118,10 @@ class AutoRuleController extends Controller
             ['label' => 'Sub ID 8', 'value' => 'sub_id8', 'type' => 'string'],
             ['label' => 'Sub ID 9', 'value' => 'sub_id9', 'type' => 'string'],
             ['label' => 'Sub ID 10', 'value' => 'sub_id10', 'type' => 'string'],
-            ['label' => 'Дата доставки', 'value' => 'delivery_date', 'type' => 'date'],
-            ['label' => 'Дата відправки', 'value' => 'sent_at', 'type' => 'date'],
-            ['label' => 'Дата оплати', 'value' => 'payment_date', 'type' => 'date'],
-            ['label' => 'Дата оплати InPost', 'value' => 'inpost_payment_date', 'type' => 'date'],
+           // ['label' => 'Дата доставки', 'value' => 'delivery_date', 'type' => 'date'],
+           // ['label' => 'Дата відправки', 'value' => 'sent_at', 'type' => 'date'],
+            //['label' => 'Дата оплати', 'value' => 'payment_date', 'type' => 'date'],
+           // ['label' => 'Дата оплати InPost', 'value' => 'inpost_payment_date', 'type' => 'date'],
             ['label' => 'Номер відстеження', 'value' => 'tracking_number', 'type' => 'string'],
             ['label' => 'Статус оплати', 'value' => 'is_paid', 'type' => 'boolean'],
             ['label' => 'Сума оплати', 'value' => 'paid_amount', 'type' => 'number'],
@@ -166,8 +167,8 @@ class AutoRuleController extends Controller
             'is_active' => 'boolean',
             'conditions' => 'array',
             'conditions.*.field' => 'required|string',
-            'conditions.*.operator' => 'required|string',
-            'conditions.*.value' => 'required|string',
+            'conditions.*.operator' => 'required|string|in:містить,не містить,дорівнює,не дорівнює,є значення,немає значення,=,!=,<,<=,>,>=,входить в,не входить в',
+            'conditions.*.value' => 'required', // Принимаем любой тип
             'actions' => 'array',
             'actions.*.type' => 'required|string',
             'actions.*.parameters' => 'nullable|array',
@@ -187,7 +188,7 @@ class AutoRuleController extends Controller
                 'auto_rule_id' => $rule->id,
                 'field' => $condition['field'],
                 'operator' => $condition['operator'],
-                'value' => $condition['value'],
+                'value' => is_array($condition['value']) ? json_encode($condition['value']) : $condition['value'],
             ]);
         }
 
@@ -200,17 +201,11 @@ class AutoRuleController extends Controller
         }
 
         return redirect()->route('auto-rules.index', $orderStatus);
+        
     }
     public function destroy(OrderStatus $orderStatus, AutoRule $rule)
     {
         $rule->delete();
-        return back()->with('success', 'Order status deleted successfully.');
-    }
-    public function toggleStatus(OrderStatus $orderStatus, AutoRule $rule)
-    {
-        $rule->is_active = !$rule->is_active;
-        $rule->save();
-
-        return redirect()->route('auto-rules.index', $orderStatus);
+        return back()->with('success', 'Автоправило успішно видалено.');
     }
 }

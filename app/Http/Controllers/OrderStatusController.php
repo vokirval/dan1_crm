@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use Inertia\Inertia;
 use App\Models\OrderStatus;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 
 class OrderStatusController extends Controller
 {
@@ -15,6 +15,7 @@ class OrderStatusController extends Controller
         $sortDirection = $request->input('sort_direction', 'desc');
 
         $statuses = OrderStatus::query()
+             ->with(['autoRules'])
             ->orderBy($sortBy, $sortDirection)
             ->paginate($perPage)
             ->appends($request->only(['per_page', 'sort_by', 'sort_direction']));

@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::create('logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('auto_rule_id')->constrained()->onDelete('cascade');
+            $table->foreignId('auto_rule_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
             $table->text('message');
             $table->timestamps();
