@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\AutoRule;
 use App\Models\Logs;
 use App\Models\Order;
+use App\Models\AutoRule;
+use App\Models\EmailHistory;
+use Illuminate\Support\Facades\Mail;
 
 class AutoRuleService
 {
@@ -143,17 +145,29 @@ class AutoRuleService
                 ]);
                 break;
             case 'send_email':
-                $recipient = $action->parameters['recipient'] ?? $order->email;
+                $recipient = $action->parameters['recipient'];
                 $subject = $action->parameters['subject'] ?? 'Повідомлення щодо замовлення';
                 $body = $action->parameters['body'] ?? "Ваше замовлення #{$order->id} оброблено.";
 
                 if ($recipient && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
                     try {
-                        \Illuminate\Support\Facades\Mail::raw($body, function ($message) use ($recipient, $subject) {
+                        Mail::raw($body, function ($message) use ($recipient, $subject) {
                             $message->to($recipient)
                                     ->subject($subject)
                                     ->from(config('mail.from.address'), config('mail.from.name'));
                         });
+
+                        EmailHistory::create([
+                            'order_id' => $order->id,
+                            'template_id' => $template->id ?? null,
+                            'to_email' => $recipient,
+                            'subject' => $subject,
+                            'body' => $body,
+                            'status' => 'success',
+                            'sent_at' => now(),
+                        ]);
+
+
                         // Логируем успешную отправку
                         Logs::create([
                             'auto_rule_id' => $rule->id,
@@ -166,6 +180,16 @@ class AutoRuleService
                             'auto_rule_id' => $rule->id,
                             'order_id' => $order->id,
                             'message' => "Помилка відправки email на {$recipient}: {$e->getMessage()}",
+                        ]);
+
+                        EmailHistory::create([
+                            'order_id' => $order->id,
+                            'template_id' => $template->id ?? null,
+                            'to_email' => $recipient,
+                            'subject' => $subject,
+                            'body' => $body,
+                            'status' => 'failed',
+                            'error_message' => $e->getMessage(),
                         ]);
                     }
                 } else {
