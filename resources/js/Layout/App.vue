@@ -88,6 +88,11 @@ const getIcon = (iconName) => icons[iconName] || null;
 
 const page = usePage();
 
+const isOrderDetailsPage = computed(() => {
+    const match = page.url.match(/^\/orders\/[^/]+/);
+    return !!match;
+});
+
 const isChildPage = computed(() => {
   const pathSegments = page.url.split("/").filter(Boolean);
   return pathSegments.length > 1; // Если сегментов больше 1, это дочерняя страница
@@ -140,7 +145,16 @@ const goBack = () => {
                 </div>
                
                 <div class="w-full flex-1 pl-2">
-                    <Button severity="contrast" variant="text"  v-if="isChildPage" @click="goBack"><ArrowLeft class="w-6 h-6" /> Повернутись</Button>
+                    <template v-if="isOrderDetailsPage">
+                        <Link href="/orders" class="p-button p-component p-button-contrast p-button-text">
+                            <ArrowLeft class="w-6 h-6 mr-1" /> Повернутись до замовлень
+                        </Link>
+                    </template>
+                    <template v-else-if="isChildPage">
+                        <Button severity="contrast" variant="text" @click="goBack">
+                            <ArrowLeft class="w-6 h-6" /> Повернутись
+                        </Button>
+                    </template>
                 </div>
                 <!-- Триггер кнопки -->
 
