@@ -83,22 +83,11 @@ class AutoRuleController extends Controller
     protected function getAvailableFields()
     {
         return [
-            ['label' => 'ID замовлення', 'value' => 'id', 'type' => 'number'],
             ['label' => 'Метод оплати', 'value' => 'payment_method_id', 'type' => 'select', 'options' => PaymentMethod::all()->map(fn($p) => ['id' => $p->id, 'name' => $p->name])],
             ['label' => 'Метод доставки', 'value' => 'delivery_method_id', 'type' => 'select', 'options' => DeliveryMethod::all()->map(fn($d) => ['id' => $d->id, 'name' => $d->name])],
             ['label' => 'Група', 'value' => 'group_id', 'type' => 'select', 'options' => Group::all()->map(fn($g) => ['id' => $g->id, 'name' => $g->name])],
             ['label' => 'Відповідальний', 'value' => 'responsible_user_id', 'type' => 'select', 'options' => User::all()->map(fn($u) => ['id' => $u->id, 'name' => $u->name])],
-            ['label' => 'Ціна доставки', 'value' => 'delivery_price', 'type' => 'number'],
-            ['label' => 'Повне ім\'я отримувача', 'value' => 'delivery_fullname', 'type' => 'string'],
-            ['label' => 'Адреса доставки', 'value' => 'delivery_address', 'type' => 'string'],
-            ['label' => 'Друга адреса', 'value' => 'delivery_second_address', 'type' => 'string'],
-            ['label' => 'Поштовий індекс', 'value' => 'delivery_postcode', 'type' => 'string'],
-            ['label' => 'Місто доставки', 'value' => 'delivery_city', 'type' => 'string'],
-            ['label' => 'Область доставки', 'value' => 'delivery_state', 'type' => 'string'],
-            ['label' => 'Код країни', 'value' => 'delivery_country_code', 'type' => 'string'],
-            ['label' => 'Номер будинку', 'value' => 'delivery_address_number', 'type' => 'string'],
-            ['label' => 'Email', 'value' => 'email', 'type' => 'string'],
-            ['label' => 'Телефон', 'value' => 'phone', 'type' => 'string'],
+            ['label' => 'Контакт', 'value' => 'delivery_fullname', 'type' => 'string'],
             ['label' => 'IP-адреса', 'value' => 'ip', 'type' => 'string'],
             ['label' => 'Коментар', 'value' => 'comment', 'type' => 'string'],
             ['label' => 'Реферер сайту', 'value' => 'website_referrer', 'type' => 'string'],
@@ -121,12 +110,8 @@ class AutoRuleController extends Controller
            // ['label' => 'Дата відправки', 'value' => 'sent_at', 'type' => 'date'],
             //['label' => 'Дата оплати', 'value' => 'payment_date', 'type' => 'date'],
            // ['label' => 'Дата оплати InPost', 'value' => 'inpost_payment_date', 'type' => 'date'],
-            ['label' => 'Номер відстеження', 'value' => 'tracking_number', 'type' => 'string'],
             ['label' => 'Статус оплати', 'value' => 'is_paid', 'type' => 'boolean'],
-            ['label' => 'Сума оплати', 'value' => 'paid_amount', 'type' => 'number'],
-            ['label' => 'ID InPost', 'value' => 'inpost_id', 'type' => 'string'],
             ['label' => 'Статус InPost', 'value' => 'inpost_status', 'type' => 'string'],
-            ['label' => 'Номер повернення', 'value' => 'return_tracking_number', 'type' => 'string'],
             ['label' => 'Сума замовлення', 'value' => 'order_total', 'type' => 'number'],
         ];
     }

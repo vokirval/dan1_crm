@@ -145,16 +145,11 @@ const goBack = () => {
                 </div>
                
                 <div class="w-full flex-1 pl-2">
-                    <template v-if="isOrderDetailsPage">
-                        <Link href="/orders" class="p-button p-component p-button-contrast p-button-text">
-                            <ArrowLeft class="w-6 h-6 mr-1" /> Повернутись до замовлень
-                        </Link>
-                    </template>
-                    <template v-else-if="isChildPage">
+                    
                         <Button severity="contrast" variant="text" @click="goBack">
                             <ArrowLeft class="w-6 h-6" /> Повернутись
                         </Button>
-                    </template>
+                   
                 </div>
                 <!-- Триггер кнопки -->
 

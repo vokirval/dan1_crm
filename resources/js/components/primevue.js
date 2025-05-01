@@ -1,6 +1,8 @@
 import PrimeVue from 'primevue/config';
 import { definePreset } from '@primevue/themes';
 
+import Editor from 'primevue/editor';
+
 import Aura from '@primevue/themes/aura';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
@@ -149,11 +151,9 @@ export function setupPrimeVue(app) {
     app.component('Toolbar', Toolbar);
     app.component('Timeline', Timeline);
     app.component('Message', Message);
+    app.component('Editor', Editor);
     
     
-
-
-
     app.use(ToastService);
     app.use(ConfirmationService);
     app.directive('tooltip', Tooltip);
