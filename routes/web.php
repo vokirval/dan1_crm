@@ -77,6 +77,8 @@ Route::middleware(['auth'])->group(function() {
     Route::delete('statistics/saved-filters/{savedFilter}', [SavedFilterController::class, 'destroy']);
 
     Route::get('/logs', [LogsController::class, 'index'])->name('logs.index');
+    Route::post('/logs/{log}/complete', [LogsController::class, 'complete'])->name('logs.complete');
+    Route::post('/logs/{log}/uncomplete', [LogsController::class, 'uncomplete'])->name('logs.uncomplete');
     
 
     Route::prefix('/products')->group(function(){

@@ -2,8 +2,9 @@
 import { ref, computed } from "vue";
 import Layout from "../../Layout/App.vue";
 import { usePage, Head, router, Link } from "@inertiajs/vue3";
+import { useToast } from "primevue/usetoast";
 
-
+const toast = useToast();
 
 //Рауты и текста.
 const fetchRoute = "/logs";
@@ -61,6 +62,38 @@ const formatDateTime = (date) => {
     hour12: false
   }).format(new Date(date));
 };
+
+
+// Функции для завершения и отмены завершения
+const completeLog = async (logId) => {
+    try {
+        const response = await axios.post(`/logs/${logId}/complete`);
+        updateLogInItems(response.data.log);
+        toast.success(response.data.message);
+    } catch (error) {
+        toast.error('Failed to complete log');
+        console.error(error);
+    }
+};
+
+const uncompleteLog = async (logId) => {
+    try {
+        const response = await axios.post(`/logs/${logId}/uncomplete`);
+        updateLogInItems(response.data.log);
+        toast.success(response.data.message);
+    } catch (error) {
+        toast.error('Failed to uncomplete log');
+        console.error(error);
+    }
+};
+
+// Обновление лога в items
+const updateLogInItems = (updatedLog) => {
+    const index = items.value.data.findIndex((item) => item.id === updatedLog.id);
+    if (index !== -1) {
+        items.value.data[index] = updatedLog;
+    }
+};
 </script>
 <template>
     <Head :title="pageTitle" />
@@ -95,9 +128,42 @@ const formatDateTime = (date) => {
                 </template>
             </Column>
 
+            <Column header="Статус">
+                <template #body="{ data }">
+
+                    <button
+                        v-if="!data.completed"
+                        class="p-button p-component p-button-warning mr-2"
+                        @click="completeLog(data.id)"
+                    >
+                    Не опрацьовано
+                    </button>
+                    <button
+                        v-if="data.completed"
+                        class="p-button p-component p-button-success mr-2"
+                        @click="uncompleteLog(data.id)"
+                    >
+                    Опрацьовано
+                    </button>
+                </template>
+            </Column>
+
+            <Column header="Завершив">
+                <template #body="{ data }">
+                    {{ data.completed_by && data.completed_by.name ? data.completed_by.name : '-' }}
+                </template>
+            </Column>
+
+
             <Column  header="Дата створення">
                 <template #body="{ data }">
                 {{ formatDateTime(data.created_at) }}
+                </template>
+            </Column>
+
+            <Column  header="Дата оновлення">
+                <template #body="{ data }">
+                {{ formatDateTime(data.updated_at) }}
                 </template>
             </Column>
 
